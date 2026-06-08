@@ -55,6 +55,10 @@ exec opencode web --port "${PORT}" --hostname 0.0.0.0
 
 **`.dockerignore`** — `.git`, `node_modules`, `*.md`
 **`.gitattributes`** — forces `*.sh` to LF so scripts run in the Linux container when committed from Windows.
+**`railway.json`** — config-as-code: pins the Dockerfile builder and deploy settings (restart policy; no
+healthcheck, since a password-protected `/` returns 401). Overrides dashboard build/deploy settings.
+**`.env.example`** — declares the required env vars. Railway config-as-code can't hold secret *values*,
+so set the real values in the dashboard (**Settings → Variables**) or via `railway variables --set`.
 
 ### Railway environment variables
 
