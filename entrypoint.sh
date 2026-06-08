@@ -41,6 +41,18 @@ if [ -n "${OBSIDIAN_VAULT_NAME}" ]; then
   obsidian_sync || echo "[entrypoint] Obsidian sync failed — starting opencode web WITHOUT sync." >&2
 fi
 
+# ── Google Workspace CLI (gws): materialize credentials from the injected secret ──
+# gws reads GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE (higher priority than the OS keyring),
+# so we write the exported credentials JSON to a file each boot and point gws at it.
+# opencode inherits the exported var, so crew agents that shell out to `gws` are authed.
+if [ -n "${GWS_CREDENTIALS_JSON}" ]; then
+  mkdir -p "${HOME}/.config/gws"
+  printf '%s' "${GWS_CREDENTIALS_JSON}" > "${HOME}/.config/gws/credentials.json"
+  chmod 600 "${HOME}/.config/gws/credentials.json"
+  export GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE="${HOME}/.config/gws/credentials.json"
+  echo "[entrypoint] gws credentials materialized for Google Workspace access."
+fi
+
 # ── OpenCode web server ──────────────────────────────────────────────────────
 # Runs from /vault (Dockerfile WORKDIR) so it loads .opencode/ and AGENTS.md.
 # Binds 0.0.0.0 so Railway's public proxy can reach it; auth via OPENCODE_SERVER_PASSWORD.
