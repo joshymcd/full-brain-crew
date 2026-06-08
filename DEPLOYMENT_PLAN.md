@@ -31,25 +31,11 @@ and never clutters your Obsidian.
 **`Dockerfile`** — installs `git`, `jq`, `gawk`, `ca-certificates`; `npm i -g opencode-ai obsidian-headless`;
 clones the crew and runs `launchme.sh --platform opencode --target /vault`. Runs from `/vault`.
 
-**`entrypoint.sh`**
-
-```bash
-#!/bin/bash
-set -e
-PORT="${PORT:-8080}"
-
-if [ -n "${OBSIDIAN_VAULT_NAME}" ]; then
-  ob login --email "${OBSIDIAN_EMAIL}" --password "${OBSIDIAN_PASSWORD}"
-  setup_args=(--vault "${OBSIDIAN_VAULT_NAME}" --path /vault)
-  [ -n "${OBSIDIAN_ENCRYPTION_PASSWORD}" ] && setup_args+=(--password "${OBSIDIAN_ENCRYPTION_PASSWORD}")
-  ob sync-setup "${setup_args[@]}"
-  ob sync-config --path /vault --excluded-folders "${OBSIDIAN_EXCLUDED_FOLDERS:-.opencode}"
-  ob sync --path /vault                 # initial pull/merge (blocking)
-  ob sync --path /vault --continuous &  # background continuous sync
-fi
-
-exec opencode web --port "${PORT}" --hostname 0.0.0.0
-```
+**`entrypoint.sh`** — when `OBSIDIAN_VAULT_NAME` is set: `ob login` (retried with backoff to ride out
+Obsidian's transient "Server overloaded") → `sync-setup` (with E2EE `--password` if provided) →
+exclude `.opencode` → initial `sync` → background `sync --continuous`. Sync failures are **non-fatal**:
+the entrypoint logs a warning and still starts `opencode web`, so a sync misconfig doesn't crash-loop
+the container (which would only hammer Obsidian's API harder).
 
 **`railway.json`** — Dockerfile builder + deploy settings (restart policy, no healthcheck).
 **`.env.example`** — declares required + Obsidian env vars (also feeds Railway's "Suggested Variables").
