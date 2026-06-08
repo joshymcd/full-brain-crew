@@ -2,3 +2,12 @@
 .env
 .env.*
 !.env.example
+
+# Local tooling / editor / OS cruft
+.claude/
+.DS_Store
+Thumbs.db
+
+# Any stray exported Google credentials — never commit these
+credentials.json
+gws-credentials*.json
