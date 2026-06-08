@@ -108,18 +108,22 @@ an interactive OAuth flow it can't do headlessly, so we **bootstrap auth locally
   after 7 days (the "Testing" default). After that, re-bootstrap is only needed if you revoke access or
   change your Google password while Gmail scopes are granted.
 
-### Onboarding runbook
+### Onboarding runbook (current Google Auth Platform UI)
 
 1. **Google Cloud Console** → create/select a project.
-2. Enable the APIs you want: **Google Calendar API** (and **Gmail API** if you want email).
-3. **OAuth consent screen**: User type **External**, fill app name/emails, add Calendar/Gmail scopes,
-   then **Publish to production** (avoids the 7-day refresh-token expiry).
-4. **Credentials → Create OAuth client ID → Desktop app**; copy the **Client ID + Client Secret**.
-5. **Locally** (machine with a browser): `npm i -g @googleworkspace/cli` → `gws auth setup` (paste
+2. **APIs & Services → Library** → enable **Google Calendar API** (and **Gmail API** if you want email).
+3. **Google Auth Platform** (Menu → APIs & Services → OAuth consent screen redirects here). First time,
+   click **Get started**: set **App name** + **user support email** (Branding), **Audience → External**,
+   **Contact email**, agree, Create.
+4. **Data Access** tab → **Add or remove scopes** → add the Calendar (and Gmail) scopes → Update/Save.
+5. **Audience** tab → **Publish app** → status becomes **In production** (avoids the 7-day refresh-token
+   expiry of "Testing").
+6. **Clients** tab → **Create client** → Application type **Desktop app** → copy the **Client ID + Secret**.
+7. **Locally** (machine with a browser): `npm i -g @googleworkspace/cli` → `gws auth setup` (paste
    ID/secret) → `gws auth login` (browser consent; click through the unverified-app warning) →
    `gws auth export --unmasked > credentials.json`.
-6. **Railway**: add secret var `GWS_CREDENTIALS_JSON` = the full contents of `credentials.json`; redeploy.
-7. **Verify**: deploy log shows "gws credentials materialized"; ask the crew to read your calendar.
+8. **Railway**: add secret var `GWS_CREDENTIALS_JSON` = the full contents of `credentials.json`; redeploy.
+9. **Verify**: deploy log shows "gws credentials materialized"; ask the crew to read your calendar.
 
 ---
 
