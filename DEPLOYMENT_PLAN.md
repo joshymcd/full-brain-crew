@@ -61,9 +61,13 @@ exec opencode web --port "${PORT}" --hostname 0.0.0.0
 | Variable | Required | Notes |
 |---|---|---|
 | `OPENCODE_SERVER_PASSWORD` | **Yes** | Protects the public web UI — without it the UI is unsecured |
-| `ANTHROPIC_API_KEY` | For use | Needed to actually run agents (`sk-ant-...`). The web server starts without it, but you can't do work |
+| `OPENCODE_API_KEY` | For use | OpenCode Go / Zen API key (from the OpenCode Zen console). Picked up automatically — no `opencode auth login` needed. The web server starts without it, but you can't run a model |
 | `OPENCODE_SERVER_USERNAME` | Optional | Login username; defaults to `opencode` |
 | `PORT` | Auto-injected | Railway injects this — **do not set** |
+
+Model selection: with `OPENCODE_API_KEY` set, pick an `opencode-go/<model-id>` model in the web UI
+(e.g. `opencode-go/kimi-k2.6`). To pin a default instead, add an `opencode.json` with
+`"model": "opencode-go/<model-id>"`.
 
 ### Railway service settings
 
