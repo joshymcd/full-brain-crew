@@ -17,7 +17,7 @@ with optional Obsidian Sync and Google Workspace (Gmail/Calendar) integration.
 ## Architecture
 
 ```
-Railway Container (node:22-bookworm-slim)
+Railway Container (node:22-trixie-slim)
 ├── obsidian-headless  ──syncs──▶  Obsidian Sync (cloud)  ◀──syncs──  Your local Obsidian
 ├── OpenCode web UI (cwd=/vault) ──serves──▶  https://<service>.up.railway.app  (public, password-protected)
 ├── Full Brain Crew  ──▶  /vault/.opencode/ (agents, skills) + /vault/AGENTS.md (dispatcher)

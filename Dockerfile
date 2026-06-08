@@ -1,4 +1,6 @@
-FROM node:22-bookworm-slim
+# Debian 13 (Trixie, glibc 2.41) — the gws CLI binary requires GLIBC >= 2.39,
+# which Bookworm (glibc 2.36) does not provide.
+FROM node:22-trixie-slim
 
 # git: clone the crew repo.  jq + gawk: required by the opencode config-merge adapter.
 # ca-certificates: TLS for git https and npm postinstall binary fetches.

@@ -14,7 +14,8 @@ Built step by step:
 
 ## How it works
 
-**Build (`Dockerfile`)** — `node:22-bookworm-slim` base; installs `git`, `jq`, `gawk`, `ca-certificates`,
+**Build (`Dockerfile`)** — `node:22-trixie-slim` base (Debian 13, glibc 2.41 — the `gws` binary needs
+GLIBC ≥ 2.39, which Bookworm's 2.36 lacks); installs `git`, `jq`, `gawk`, `ca-certificates`,
 `libsecret-1-0`; `npm i -g opencode-ai obsidian-headless @googleworkspace/cli`; clones the crew and runs
 `launchme.sh --platform opencode --target /vault` (generates `.opencode/` + `AGENTS.md`). Runs from `/vault`
 so opencode resolves the crew config. The crew ref is pinnable via `--build-arg CREW_REF=<sha>`.
