@@ -28,18 +28,20 @@ RUN npm install -g obsidian-headless
 # Gmail/Calendar. Auth is supplied at runtime via GWS_CREDENTIALS_JSON (see entrypoint).
 RUN npm install -g @googleworkspace/cli
 
-# Install the Full Brain Crew into /vault: generates .opencode/ (agents/skills),
-# AGENTS.md (the opencode dispatcher), and the vault folder structure.
-# --platform opencode + --target /vault run launchme.sh non-interactively.
-# Override CREW_REPO for forks/dev builds. Pin CREW_REF to a commit for reproducible builds.
+# Bundle the Full Brain Crew source as a fallback, then install/update it into
+# /vault at boot. Runtime install keeps mounted/local vaults and Railway deploys
+# aligned with the selected crew ref, while the bundled source lets the app boot
+# if GitHub is temporarily unavailable.
+# Override CREW_REPO for forks/dev builds. Pin CREW_REF to a commit for reproducible boots.
 ARG CREW_REPO=https://github.com/gnekt/My-Brain-Is-Full-Crew.git
 ARG CREW_REF=main
-RUN mkdir -p /vault
-RUN git clone "${CREW_REPO}" /tmp/my-brain-is-full-crew \
-    && cd /tmp/my-brain-is-full-crew \
+ENV CREW_REPO=${CREW_REPO} \
+    CREW_REF=${CREW_REF}
+RUN mkdir -p /opt /vault
+RUN git clone "${CREW_REPO}" /opt/my-brain-is-full-crew \
+    && cd /opt/my-brain-is-full-crew \
     && git checkout "${CREW_REF}" \
-    && bash scripts/launchme.sh --platform opencode --target /vault \
-    && rm -rf /tmp/my-brain-is-full-crew
+    && rm -rf .git
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

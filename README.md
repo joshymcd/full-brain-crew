@@ -8,7 +8,8 @@ with optional Obsidian Sync and Google Workspace (Gmail/Calendar) integration.
 
 - **OpenCode web UI** (`opencode web`) — the agent runtime + browser UI, served publicly on Railway and
   protected by a password. Models come from **OpenCode Go / Zen** via `OPENCODE_API_KEY`.
-- **Full Brain Crew** — agents/skills installed into `/vault` at build time (`.opencode/`, `AGENTS.md`).
+- **Full Brain Crew** — treated as a boot-time dependency: each startup installs/updates crew-owned
+  files in `/vault` (`.opencode/`, `AGENTS.md`, `Meta/scripts`) from `CREW_REPO` + `CREW_REF`.
 - **Obsidian Sync** *(optional)* — `obsidian-headless` keeps `/vault` in sync with your Obsidian cloud,
   which is also how the (ephemeral) vault persists across redeploys. `/vault` is initialized as a local git
   worktree at boot so OpenCode treats it as the active project instead of falling back to `/`.
@@ -47,6 +48,7 @@ See [`.env.example`](.env.example) for the annotated list.
 | `OPENCODE_SERVER_PASSWORD` | **Required** | Password for the public web UI |
 | `OPENCODE_API_KEY` | **Required to use** | OpenCode Go / Zen API key (auto-detected) |
 | `OPENCODE_SERVER_USERNAME` | Optional | Web UI username (defaults to `opencode`) |
+| `CREW_REPO` / `CREW_REF` | Optional | Full Brain Crew source and ref installed at boot; defaults to upstream `main` |
 | `OBSIDIAN_VAULT_NAME` | Enables sync | Exact vault name in Obsidian Sync — **the on-switch** |
 | `OBSIDIAN_EMAIL` / `OBSIDIAN_PASSWORD` | With sync | Obsidian account credentials (no MFA) |
 | `OBSIDIAN_ENCRYPTION_PASSWORD` | If E2EE | Vault encryption password (separate from account pw) |
@@ -58,8 +60,8 @@ See [`.env.example`](.env.example) for the annotated list.
 
 | File | Purpose |
 |---|---|
-| `Dockerfile` | Builds the image: opencode + obsidian-headless + gws, installs the crew into `/vault` |
-| `entrypoint.sh` | Boot logic: Obsidian sync (gated), gws credentials (gated), then `opencode web` |
+| `Dockerfile` | Builds the image: opencode + obsidian-headless + gws, bundles crew source fallback |
+| `entrypoint.sh` | Boot logic: Obsidian sync (gated), crew install/update, gws credentials, then `opencode web` |
 | `railway.json` | Railway config-as-code (Dockerfile builder, restart policy, no healthcheck) |
 | `.env.example` | Annotated env var declarations |
 | `.dockerignore` / `.gitignore` / `.gitattributes` | Build-context trim, secret-safety, LF for `*.sh` |
