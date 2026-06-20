@@ -21,10 +21,11 @@ RUN npm install -g @googleworkspace/cli
 # Install the Full Brain Crew into the vault: generates .opencode/ (agents/skills),
 # AGENTS.md (the opencode dispatcher), and the vault folder structure into /vault.
 # --platform opencode + --target /vault run launchme.sh non-interactively.
-# Pin to a commit for reproducible builds: docker build --build-arg CREW_REF=<sha>
+# Override CREW_REPO for forks/dev builds. Pin CREW_REF to a commit for reproducible builds.
+ARG CREW_REPO=https://github.com/gnekt/My-Brain-Is-Full-Crew.git
 ARG CREW_REF=main
 RUN mkdir -p /vault
-RUN git clone https://github.com/gnekt/My-Brain-Is-Full-Crew.git /tmp/my-brain-is-full-crew \
+RUN git clone "${CREW_REPO}" /tmp/my-brain-is-full-crew \
     && cd /tmp/my-brain-is-full-crew \
     && git checkout "${CREW_REF}" \
     && bash scripts/launchme.sh --platform opencode --target /vault \
