@@ -5,7 +5,7 @@ see [README.md](README.md).
 
 Built step by step:
 - **Step 1 (done):** bare `opencode web` running publicly on Railway.
-- **Step 2 (done):** Full Brain Crew installed into `/vault` (agents/skills load).
+- **Step 2 (done):** Full Brain Crew installed/updated into `/vault` at boot (agents/skills load).
 - **Step 3 (done):** Obsidian Sync via `obsidian-headless` — `/vault` syncs with your Obsidian cloud.
 - **Step 4 (done):** Google Workspace (Gmail/Calendar) via the `gws` CLI + injected OAuth credentials.
 - **Later (optional):** private access via Tailscale.
@@ -16,9 +16,10 @@ Built step by step:
 
 **Build (`Dockerfile`)** — `node:22-trixie-slim` base (Debian 13, glibc 2.41 — the `gws` binary needs
 GLIBC ≥ 2.39, which Bookworm's 2.36 lacks); installs `git`, `jq`, `gawk`, `ca-certificates`,
-`libsecret-1-0`; `npm i -g opencode-ai obsidian-headless @googleworkspace/cli`; clones the crew and runs
-`launchme.sh --platform opencode --target /vault` (generates `.opencode/` + `AGENTS.md`). Runs from `/vault`
-so opencode resolves the crew config. The crew ref is pinnable via `--build-arg CREW_REF=<sha>`.
+`libsecret-1-0`; `npm i -g opencode-ai obsidian-headless @googleworkspace/cli`; clones the crew into
+`/opt/my-brain-is-full-crew` as a bundled fallback. Runs from `/vault` so opencode resolves the crew config.
+The crew source is configurable with `CREW_REPO` and `CREW_REF`; leave `CREW_REF=main` for latest-on-boot or
+pin it to a tag/commit for reproducible boots.
 
 **Boot (`entrypoint.sh`)**, in order:
 1. **Obsidian sync** (if `OBSIDIAN_VAULT_NAME` set): `ob login` (retried with backoff to ride out
@@ -26,11 +27,15 @@ so opencode resolves the crew config. The crew ref is pinnable via `--build-arg 
    exclude `.opencode` and `.git` → initial `sync` → background `sync --continuous`. **Non-fatal**: on
    failure it warns and continues, so a sync misconfig doesn't crash-loop the container (which only
    hammers Obsidian's API harder).
-2. **gws credentials** (if `GWS_CREDENTIALS_JSON` set): write the JSON to `~/.config/gws/credentials.json`
+2. **Full Brain Crew install/update:** clone `CREW_REPO` at `CREW_REF` into `/tmp` and run
+   `launchme.sh --platform opencode --target /vault`, feeding the reinstall confirmation non-interactively.
+   If the runtime clone fails, fall back to the bundled `/opt/my-brain-is-full-crew` source. The upstream
+   installer overwrites crew-owned core files but preserves vault notes and custom agents.
+3. **gws credentials** (if `GWS_CREDENTIALS_JSON` set): write the JSON to `~/.config/gws/credentials.json`
    and export `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` so crew agents shelling out to `gws` are authed.
-3. **OpenCode project detection:** initialize `/vault/.git` if needed so OpenCode treats `/vault` as the
+4. **OpenCode project detection:** initialize `/vault/.git` if needed so OpenCode treats `/vault` as the
    active project/worktree instead of the global `/` project.
-4. **`opencode web`** on `0.0.0.0:$PORT`, protected by `OPENCODE_SERVER_PASSWORD`.
+5. **`opencode web`** on `0.0.0.0:$PORT`, protected by `OPENCODE_SERVER_PASSWORD`.
 
 **Why ephemeral `/vault` is fine:** with Obsidian Sync on, the cloud vault is the source of truth — each
 boot pulls it down and agent changes sync back up. No Railway volume required.
@@ -50,7 +55,8 @@ Environment variables: see [README.md](README.md#environment-variables) and [`.e
 
 ## Verification
 
-- **Step 1/2 (opencode + crew):** open the URL, log in, confirm the crew's agents/skills appear in the UI.
+- **Step 1/2 (opencode + crew):** logs should show `Full Brain Crew install/update complete`; open the URL,
+  log in, and confirm the crew's agents/skills appear in the UI.
 - **Step 3 (Obsidian):** create the vault in Obsidian Sync first; set the `OBSIDIAN_*` vars; on redeploy the
   log should show `ob login` → `sync-setup` → `sync` with no prompt. Confirm real notes appear in `/vault`,
   agent edits show in local Obsidian, and `.opencode/` plus `.git/` did **not** sync up into your vault.
@@ -90,10 +96,11 @@ while Gmail scopes are granted. Request only the scopes you need.
 
 ## Known caveats
 
-- **First-sync merge** of a populated `/vault` (baked-in crew) against the remote vault is undocumented
-  upstream; excluding `.opencode` and `.git` before the first sync avoids pushing agent config and local git
-  metadata. `AGENTS.md` is a single file (not a folder) so `--excluded-folders` won't catch it — it may sync
-  up; add more excludes via `OBSIDIAN_EXCLUDED_FOLDERS` if crew files clutter your vault.
+- **Boot-time crew updates are live dependencies.** Leaving `CREW_REF=main` means every boot can pick up
+  upstream crew changes. Pin `CREW_REF` to a tag/commit when you need reproducible deploys.
+- **Crew files can sync to Obsidian.** `.opencode` and `.git` are excluded before the first sync, but
+  `AGENTS.md` and `Meta/scripts` are regular vault files and may sync. That is useful for latest crew state,
+  but can create visible crew files in the vault.
 - **No process supervisor.** `ob sync --continuous` runs backgrounded; if it dies the container stays up but
   silently stops syncing.
 - **Concurrent writes.** Agents writing while continuous sync pulls remote edits can create Obsidian
