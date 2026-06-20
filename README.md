@@ -10,7 +10,8 @@ with optional Obsidian Sync and Google Workspace (Gmail/Calendar) integration.
   protected by a password. Models come from **OpenCode Go / Zen** via `OPENCODE_API_KEY`.
 - **Full Brain Crew** — agents/skills installed into `/vault` at build time (`.opencode/`, `AGENTS.md`).
 - **Obsidian Sync** *(optional)* — `obsidian-headless` keeps `/vault` in sync with your Obsidian cloud,
-  which is also how the (ephemeral) vault persists across redeploys.
+  which is also how the (ephemeral) vault persists across redeploys. `/vault` is initialized as a local git
+  worktree at boot so OpenCode treats it as the active project instead of falling back to `/`.
 - **Google Workspace** *(optional)* — the crew's `gws` CLI for Gmail/Calendar, authenticated via an
   injected OAuth credentials file.
 
@@ -25,8 +26,8 @@ Railway Container (node:22-trixie-slim)
 ```
 
 `/vault` is ephemeral. With Obsidian Sync enabled, the **cloud vault is the source of truth**: each boot
-pulls it down, and agent changes sync back up. `.opencode/` is excluded from sync so agent config never
-clutters your notes.
+pulls it down, and agent changes sync back up. `.opencode/` and `.git/` are excluded from sync so agent
+config and local project-detection metadata never clutter your notes.
 
 ## Quick start
 
@@ -49,7 +50,7 @@ See [`.env.example`](.env.example) for the annotated list.
 | `OBSIDIAN_VAULT_NAME` | Enables sync | Exact vault name in Obsidian Sync — **the on-switch** |
 | `OBSIDIAN_EMAIL` / `OBSIDIAN_PASSWORD` | With sync | Obsidian account credentials (no MFA) |
 | `OBSIDIAN_ENCRYPTION_PASSWORD` | If E2EE | Vault encryption password (separate from account pw) |
-| `OBSIDIAN_EXCLUDED_FOLDERS` | Optional | Comma-separated folders excluded from sync (default `.opencode`) |
+| `OBSIDIAN_EXCLUDED_FOLDERS` | Optional | Comma-separated folders excluded from sync (`.opencode` and `.git` are always included) |
 | `GWS_CREDENTIALS_JSON` | Enables Google | Contents of a locally-exported `gws` credentials file (secret) |
 | `PORT` | — | Auto-injected by Railway — **do not set** |
 

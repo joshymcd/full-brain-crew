@@ -16,6 +16,11 @@ RUN apt-get update && apt-get install -y git jq gawk ca-certificates libsecret-1
 # OpenCode (web UI + agent runtime)
 RUN npm install -g opencode-ai
 
+# opencode web tries to open a local browser via xdg-open. This image runs headless
+# on Railway and in Docker Compose, so provide a no-op opener to avoid noisy ENOENT logs.
+RUN printf '#!/bin/sh\nexit 0\n' > /usr/local/bin/xdg-open \
+    && chmod +x /usr/local/bin/xdg-open
+
 # Obsidian Headless (optional vault sync) — requires Node 22+ (satisfied by the base image)
 RUN npm install -g obsidian-headless
 
