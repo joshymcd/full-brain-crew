@@ -8,6 +8,9 @@
 .DS_Store
 Thumbs.db
 
+# Local Docker Compose vault bind mount
+.vault/
+
 # Any stray exported Google credentials — never commit these
 credentials.json
 gws-credentials*.json
