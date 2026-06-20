@@ -2,6 +2,11 @@
 # which Bookworm (glibc 2.36) does not provide.
 FROM node:22-trixie-slim
 
+LABEL org.opencontainers.image.title="Full Brain Crew on Railway" \
+      org.opencontainers.image.description="OpenCode web UI with Full Brain Crew, optional Obsidian Sync, and Google Workspace CLI" \
+      org.opencontainers.image.source="https://github.com/joshymcd/full-brain-crew" \
+      org.opencontainers.image.base.name="docker.io/library/node:22-trixie-slim"
+
 # git: clone the crew repo.  jq + gawk: required by the opencode config-merge adapter.
 # ca-certificates: TLS for git https and npm postinstall binary fetches.
 # libsecret-1-0: keyring backend the gws CLI may load at runtime.
@@ -18,8 +23,8 @@ RUN npm install -g obsidian-headless
 # Gmail/Calendar. Auth is supplied at runtime via GWS_CREDENTIALS_JSON (see entrypoint).
 RUN npm install -g @googleworkspace/cli
 
-# Install the Full Brain Crew into the vault: generates .opencode/ (agents/skills),
-# AGENTS.md (the opencode dispatcher), and the vault folder structure into /vault.
+# Install the Full Brain Crew into /vault: generates .opencode/ (agents/skills),
+# AGENTS.md (the opencode dispatcher), and the vault folder structure.
 # --platform opencode + --target /vault run launchme.sh non-interactively.
 # Override CREW_REPO for forks/dev builds. Pin CREW_REF to a commit for reproducible builds.
 ARG CREW_REPO=https://github.com/gnekt/My-Brain-Is-Full-Crew.git
