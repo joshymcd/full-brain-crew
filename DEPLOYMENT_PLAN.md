@@ -23,12 +23,14 @@ so opencode resolves the crew config. The crew ref is pinnable via `--build-arg 
 **Boot (`entrypoint.sh`)**, in order:
 1. **Obsidian sync** (if `OBSIDIAN_VAULT_NAME` set): `ob login` (retried with backoff to ride out
    Obsidian's transient "Server overloaded") → `sync-setup` (with E2EE `--password` if provided) →
-   exclude `.opencode` → initial `sync` → background `sync --continuous`. **Non-fatal**: on failure it
-   warns and continues, so a sync misconfig doesn't crash-loop the container (which only hammers
-   Obsidian's API harder).
+   exclude `.opencode` and `.git` → initial `sync` → background `sync --continuous`. **Non-fatal**: on
+   failure it warns and continues, so a sync misconfig doesn't crash-loop the container (which only
+   hammers Obsidian's API harder).
 2. **gws credentials** (if `GWS_CREDENTIALS_JSON` set): write the JSON to `~/.config/gws/credentials.json`
    and export `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` so crew agents shelling out to `gws` are authed.
-3. **`opencode web`** on `0.0.0.0:$PORT`, protected by `OPENCODE_SERVER_PASSWORD`.
+3. **OpenCode project detection:** initialize `/vault/.git` if needed so OpenCode treats `/vault` as the
+   active project/worktree instead of the global `/` project.
+4. **`opencode web`** on `0.0.0.0:$PORT`, protected by `OPENCODE_SERVER_PASSWORD`.
 
 **Why ephemeral `/vault` is fine:** with Obsidian Sync on, the cloud vault is the source of truth — each
 boot pulls it down and agent changes sync back up. No Railway volume required.
@@ -51,7 +53,9 @@ Environment variables: see [README.md](README.md#environment-variables) and [`.e
 - **Step 1/2 (opencode + crew):** open the URL, log in, confirm the crew's agents/skills appear in the UI.
 - **Step 3 (Obsidian):** create the vault in Obsidian Sync first; set the `OBSIDIAN_*` vars; on redeploy the
   log should show `ob login` → `sync-setup` → `sync` with no prompt. Confirm real notes appear in `/vault`,
-  agent edits show in local Obsidian, and `.opencode/` did **not** sync up into your vault.
+  agent edits show in local Obsidian, and `.opencode/` plus `.git/` did **not** sync up into your vault.
+- **OpenCode project:** the log should show `/vault` was initialized as a git worktree on first boot. In the
+  UI, the recent/opened project should show `/vault`, not `/`.
 - **Step 4 (Google):** after onboarding (below), the log shows `gws credentials materialized`; ask the crew
   to read your calendar.
 
@@ -87,9 +91,9 @@ while Gmail scopes are granted. Request only the scopes you need.
 ## Known caveats
 
 - **First-sync merge** of a populated `/vault` (baked-in crew) against the remote vault is undocumented
-  upstream; excluding `.opencode` before the first sync avoids pushing agent config. `AGENTS.md` is a single
-  file (not a folder) so `--excluded-folders` won't catch it — it may sync up; add more excludes via
-  `OBSIDIAN_EXCLUDED_FOLDERS` if crew files clutter your vault.
+  upstream; excluding `.opencode` and `.git` before the first sync avoids pushing agent config and local git
+  metadata. `AGENTS.md` is a single file (not a folder) so `--excluded-folders` won't catch it — it may sync
+  up; add more excludes via `OBSIDIAN_EXCLUDED_FOLDERS` if crew files clutter your vault.
 - **No process supervisor.** `ob sync --continuous` runs backgrounded; if it dies the container stays up but
   silently stops syncing.
 - **Concurrent writes.** Agents writing while continuous sync pulls remote edits can create Obsidian

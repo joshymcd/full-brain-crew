@@ -3,6 +3,29 @@ set -e
 
 PORT="${PORT:-8080}"
 
+obsidian_excluded_folders() {
+  local excludes="${OBSIDIAN_EXCLUDED_FOLDERS:-.opencode}"
+
+  case ",${excludes}," in
+    *",.opencode,"*) ;;
+    *) excludes="${excludes},.opencode" ;;
+  esac
+
+  case ",${excludes}," in
+    *",.git,"*) ;;
+    *) excludes="${excludes},.git" ;;
+  esac
+
+  printf '%s' "${excludes}"
+}
+
+ensure_vault_git() {
+  if [ ! -d /vault/.git ]; then
+    git -C /vault init -q
+    echo "[entrypoint] Initialized /vault as a git worktree for OpenCode project detection."
+  fi
+}
+
 # Set up Obsidian Sync. Returns non-zero on failure so the caller can continue
 # without sync rather than crash-looping the container (which hammers Obsidian's API).
 obsidian_sync() {
@@ -30,7 +53,7 @@ obsidian_sync() {
   fi
   ob sync-setup "${setup_args[@]}" || return 1
 
-  ob sync-config --path /vault --excluded-folders "${OBSIDIAN_EXCLUDED_FOLDERS:-.opencode}" || true
+  ob sync-config --path /vault --excluded-folders "$(obsidian_excluded_folders)" || true
   ob sync --path /vault || return 1     # initial pull/merge (blocking)
   ob sync --path /vault --continuous &  # background continuous sync
   echo "[entrypoint] Obsidian continuous sync started."
@@ -56,4 +79,5 @@ fi
 # ── OpenCode web server ──────────────────────────────────────────────────────
 # Runs from /vault (Dockerfile WORKDIR) so it loads .opencode/ and AGENTS.md.
 # Binds 0.0.0.0 so Railway's public proxy can reach it; auth via OPENCODE_SERVER_PASSWORD.
+ensure_vault_git
 exec opencode web --port "${PORT}" --hostname 0.0.0.0
