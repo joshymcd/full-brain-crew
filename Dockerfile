@@ -24,11 +24,11 @@ RUN npm install -g @googleworkspace/cli
 # Pin to a commit for reproducible builds: docker build --build-arg CREW_REF=<sha>
 ARG CREW_REF=main
 RUN mkdir -p /vault
-WORKDIR /vault
-RUN git clone https://github.com/gnekt/My-Brain-Is-Full-Crew.git \
-    && cd My-Brain-Is-Full-Crew \
+RUN git clone https://github.com/gnekt/My-Brain-Is-Full-Crew.git /tmp/my-brain-is-full-crew \
+    && cd /tmp/my-brain-is-full-crew \
     && git checkout "${CREW_REF}" \
-    && bash scripts/launchme.sh --platform opencode --target /vault
+    && bash scripts/launchme.sh --platform opencode --target /vault \
+    && rm -rf /tmp/my-brain-is-full-crew
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
