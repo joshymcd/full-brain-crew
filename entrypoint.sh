@@ -2,10 +2,13 @@
 set -e
 
 PORT="${PORT:-8080}"
+WORKSPACE_PATH="${WORKSPACE_PATH:-/vault}"
+SYNC_MODULE_DIR="${SYNC_MODULE_DIR:-/usr/local/lib/full-brain-crew/sync}"
 
 install_full_brain_crew() {
   local repo="${CREW_REPO:-https://github.com/gnekt/My-Brain-Is-Full-Crew.git}"
   local ref="${CREW_REF:-main}"
+  local workspace_path="$1"
   local runtime_src="/tmp/my-brain-is-full-crew"
   local bundled_src="/opt/my-brain-is-full-crew"
   local src=""
@@ -32,74 +35,54 @@ install_full_brain_crew() {
   # The installer prompts before overwriting existing core files. Feed "c" so
   # boot-time reinstalls refresh crew-owned files while preserving vault notes
   # and custom agents according to the upstream installer semantics.
-  (cd "${src}" && printf 'c\n' | bash scripts/launchme.sh --platform opencode --target /vault)
+  (cd "${src}" && printf 'c\n' | bash scripts/launchme.sh --platform opencode --target "${workspace_path}")
   echo "[entrypoint] Full Brain Crew install/update complete."
 }
 
-obsidian_excluded_folders() {
-  local excludes="${OBSIDIAN_EXCLUDED_FOLDERS:-.opencode}"
+ensure_workspace_git() {
+  local workspace_path="$1"
 
-  case ",${excludes}," in
-    *",.opencode,"*) ;;
-    *) excludes="${excludes},.opencode" ;;
-  esac
-
-  case ",${excludes}," in
-    *",.git,"*) ;;
-    *) excludes="${excludes},.git" ;;
-  esac
-
-  printf '%s' "${excludes}"
-}
-
-ensure_vault_git() {
-  if [ ! -d /vault/.git ]; then
-    git -C /vault init -q
-    echo "[entrypoint] Initialized /vault as a git worktree for OpenCode project detection."
+  if [ ! -d "${workspace_path}/.git" ]; then
+    git -C "${workspace_path}" init -q
+    echo "[entrypoint] Initialized ${workspace_path} as a git worktree for OpenCode project detection."
   fi
 }
 
-# Set up Obsidian Sync. Returns non-zero on failure so the caller can continue
-# without sync rather than crash-looping the container (which hammers Obsidian's API).
-obsidian_sync() {
-  echo "[entrypoint] Obsidian sync enabled for vault: ${OBSIDIAN_VAULT_NAME}"
+handle_sync_failure() {
+  local step_name="$1"
 
-  # Retry login with backoff — Obsidian's API returns a transient "Server overloaded".
-  local attempt=1 max=5
-  until ob login --email "${OBSIDIAN_EMAIL}" --password "${OBSIDIAN_PASSWORD}"; do
-    if [ "${attempt}" -ge "${max}" ]; then
-      echo "[entrypoint] ob login failed after ${max} attempts." >&2
-      return 1
-    fi
-    local wait=$((attempt * 10))
-    echo "[entrypoint] ob login attempt ${attempt}/${max} failed; retrying in ${wait}s..." >&2
-    sleep "${wait}"
-    attempt=$((attempt + 1))
-  done
-
-  # E2EE vaults require the encryption password (separate from the account password).
-  local setup_args=(--vault "${OBSIDIAN_VAULT_NAME}" --path /vault)
-  if [ -n "${OBSIDIAN_ENCRYPTION_PASSWORD}" ]; then
-    setup_args+=(--password "${OBSIDIAN_ENCRYPTION_PASSWORD}")
-  else
-    echo "[entrypoint] WARNING: OBSIDIAN_ENCRYPTION_PASSWORD not set — an E2EE vault will fail sync-setup." >&2
+  if sync_bool_true "${SYNC_REQUIRED:-false}"; then
+    echo "[entrypoint] Sync ${step_name} failed and SYNC_REQUIRED=true; exiting." >&2
+    return 1
   fi
-  ob sync-setup "${setup_args[@]}" || return 1
 
-  ob sync-config --path /vault --excluded-folders "$(obsidian_excluded_folders)" || true
-  ob sync --path /vault || return 1     # initial pull/merge (blocking)
-  ob sync --path /vault --continuous &  # background continuous sync
-  echo "[entrypoint] Obsidian continuous sync started."
+  echo "[entrypoint] Sync ${step_name} failed - starting opencode web WITHOUT working sync." >&2
 }
 
-# The vault is ephemeral on Railway, so the Obsidian Sync cloud is the source of truth.
-if [ -n "${OBSIDIAN_VAULT_NAME}" ]; then
-  obsidian_sync || echo "[entrypoint] Obsidian sync failed — starting opencode web WITHOUT sync." >&2
+# The workspace is ephemeral on Railway unless a sync backend restores and persists it.
+# Obsidian remains selected automatically when OBSIDIAN_VAULT_NAME is set and SYNC_BACKEND is unset.
+# shellcheck source=/dev/null
+source "${SYNC_MODULE_DIR}/common.sh"
+
+SYNC_BACKEND_SELECTED="$(sync_selected_backend)"
+sync_load_backend "${SYNC_BACKEND_SELECTED}" "${SYNC_MODULE_DIR}"
+echo "[entrypoint] Sync backend: ${SYNC_BACKEND_SELECTED}"
+
+SYNC_PREPARED=true
+if ! sync_prepare "${WORKSPACE_PATH}"; then
+  handle_sync_failure "prepare"
+  SYNC_PREPARED=false
 fi
 
-install_full_brain_crew
+if [ "${SYNC_PREPARED}" = true ]; then
+  if ! sync_start "${WORKSPACE_PATH}"; then
+    handle_sync_failure "start"
+  fi
+fi
 
-# ── Google Workspace CLI (gws): materialize credentials from the injected secret ──
+install_full_brain_crew "${WORKSPACE_PATH}"
+
+# -- Google Workspace CLI (gws): materialize credentials from the injected secret --
 # gws reads GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE (higher priority than the OS keyring),
 # so we write the exported credentials JSON to a file each boot and point gws at it.
 # opencode inherits the exported var, so crew agents that shell out to `gws` are authed.
@@ -111,8 +94,9 @@ if [ -n "${GWS_CREDENTIALS_JSON}" ]; then
   echo "[entrypoint] gws credentials materialized for Google Workspace access."
 fi
 
-# ── OpenCode web server ──────────────────────────────────────────────────────
-# Runs from /vault (Dockerfile WORKDIR) so it loads .opencode/ and AGENTS.md.
+# -- OpenCode web server ------------------------------------------------------
+# Runs from the workspace so it loads .opencode/ and AGENTS.md.
 # Binds 0.0.0.0 so Railway's public proxy can reach it; auth via OPENCODE_SERVER_PASSWORD.
-ensure_vault_git
+ensure_workspace_git "${WORKSPACE_PATH}"
+cd "${WORKSPACE_PATH}"
 exec opencode web --port "${PORT}" --hostname 0.0.0.0

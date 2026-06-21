@@ -43,6 +43,7 @@ RUN git clone "${CREW_REPO}" /opt/my-brain-is-full-crew \
     && git checkout "${CREW_REF}" \
     && rm -rf .git
 
+COPY sync/ /usr/local/lib/full-brain-crew/sync/
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
