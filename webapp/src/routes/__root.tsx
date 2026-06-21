@@ -34,7 +34,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body style={{ width: '100dvw', height: '100dvh' }}>
         {children}
         <TanStackDevtools
           config={{
