@@ -43,9 +43,9 @@ RUN git clone "${CREW_REPO}" /opt/my-brain-is-full-crew \
     && git checkout "${CREW_REF}" \
     && rm -rf .git
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY scripts/ /usr/local/lib/full-brain-crew/scripts/
+RUN chmod +x /usr/local/lib/full-brain-crew/scripts/entrypoint.sh
 
 # opencode resolves .opencode/ and AGENTS.md from its working directory, so run from /vault.
 WORKDIR /vault
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/lib/full-brain-crew/scripts/entrypoint.sh"]
