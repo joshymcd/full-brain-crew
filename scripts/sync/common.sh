@@ -27,7 +27,7 @@ sync_selected_backend() {
 
 sync_validate_backend() {
   case "$1" in
-    none|obsidian) return 0 ;;
+    none|obsidian|git) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -37,7 +37,7 @@ sync_load_backend() {
   local module_dir="$2"
 
   if ! sync_validate_backend "${backend}"; then
-    sync_error "Unknown SYNC_BACKEND '${backend}'. Valid values: none, obsidian."
+    sync_error "Unknown SYNC_BACKEND '${backend}'. Valid values: none, obsidian, git."
     return 1
   fi
 

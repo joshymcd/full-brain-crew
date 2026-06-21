@@ -11,7 +11,7 @@ with pluggable sync backends and optional Google Workspace (Gmail/Calendar) inte
 - **Full Brain Crew** — treated as a boot-time dependency: each startup installs/updates crew-owned files in
   `/vault` (`.opencode/`, `AGENTS.md`, `Meta/scripts`) from `CREW_REPO` + `CREW_REF`.
 - **Workspace sync** *(optional)* — a selected backend prepares and persists `/vault`. Current backends are
-  `none` and `obsidian`; Git/Drive-style backends can be added behind the same shell module interface later.
+  `none`, `obsidian`, and `git`; Drive-style backends can be added behind the same shell module interface later.
   `/vault` is initialized as a local git worktree at boot so OpenCode treats it as the active project instead
   of falling back to `/`.
 - **Google Workspace** *(optional)* — the crew's `gws` CLI for Gmail/Calendar, authenticated via an
@@ -21,16 +21,15 @@ with pluggable sync backends and optional Google Workspace (Gmail/Calendar) inte
 
 ```
 Railway Container (node:22-trixie-slim)
-├── sync backend       ──syncs──▶  Obsidian Sync / future providers / none
+├── sync backend       ──syncs──▶  Obsidian Sync / Git remote / none
 ├── crew installer     ──updates─▶  /vault/.opencode/ + /vault/AGENTS.md + /vault/Meta/scripts
 ├── OpenCode web UI (cwd=/vault) ──serves──▶  https://<service>.up.railway.app  (public, password-protected)
 └── gws CLI (optional)  ──▶  Gmail / Google Calendar
 ```
 
 `/vault` is ephemeral on Railway unless a sync backend restores and persists it. With `SYNC_BACKEND=obsidian`,
-the Obsidian cloud vault is the source of truth: each boot pulls it down, and agent changes sync back up.
-`.opencode/` and `.git/` are excluded from Obsidian Sync so agent config and local project-detection metadata
-never clutter your notes.
+the Obsidian cloud vault is the source of truth. With `SYNC_BACKEND=git`, a Git remote is the source of truth:
+each boot clones/pulls it down, and workspace changes are periodically committed and pushed back up.
 
 ## Quick start
 
@@ -51,13 +50,20 @@ See [`.env.example`](.env.example) for the annotated list.
 | `OPENCODE_API_KEY` | **Required to use** | OpenCode Go / Zen API key (auto-detected) |
 | `OPENCODE_SERVER_USERNAME` | Optional | Web UI username (defaults to `opencode`) |
 | `CREW_REPO` / `CREW_REF` | Optional | Full Brain Crew source and ref installed at boot; defaults to upstream `main` |
-| `SYNC_BACKEND` | Optional | Sync backend: `none` or `obsidian`; defaults to `obsidian` when `OBSIDIAN_VAULT_NAME` is set, otherwise `none` |
+| `SYNC_BACKEND` | Optional | Sync backend: `none`, `obsidian`, or `git`; defaults to `obsidian` when `OBSIDIAN_VAULT_NAME` is set, otherwise `none` |
 | `SYNC_REQUIRED` | Optional | Set `true` to fail startup when sync fails; defaults to non-fatal sync failures |
 | `WORKSPACE_PATH` | Optional | Local assistant workspace path, defaults to `/vault` |
 | `OBSIDIAN_VAULT_NAME` | Obsidian backend | Exact vault name in Obsidian Sync |
 | `OBSIDIAN_EMAIL` / `OBSIDIAN_PASSWORD` | With sync | Obsidian account credentials (no MFA) |
 | `OBSIDIAN_ENCRYPTION_PASSWORD` | If E2EE | Vault encryption password (separate from account pw) |
 | `OBSIDIAN_EXCLUDED_FOLDERS` | Optional | Comma-separated folders excluded from sync (`.opencode` and `.git` are always included) |
+| `GIT_REMOTE_URL` | Git backend | Token-free HTTPS Git remote URL, e.g. `https://github.com/owner/repo.git` |
+| `GIT_TOKEN` | Git backend | HTTPS token used through `GIT_ASKPASS`; store as a secret |
+| `GIT_BRANCH` | Git backend | Branch to clone/pull/push, defaults to `main` |
+| `GIT_USERNAME` | Git backend | HTTPS username, defaults to `x-access-token` |
+| `GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` | Git backend | Commit author identity for workspace commits |
+| `GIT_SYNC_INTERVAL_SECONDS` | Git backend | Background sync interval, defaults to `60` |
+| `GIT_COMMIT_MESSAGE` | Git backend | Commit message for automatic workspace commits |
 | `GWS_CREDENTIALS_JSON` | Enables Google | Contents of a locally-exported `gws` credentials file (secret) |
 | `PORT` | — | Auto-injected by Railway — **do not set** |
 
@@ -68,7 +74,7 @@ See [`.env.example`](.env.example) for the annotated list.
 | `Dockerfile` | Builds the image: opencode + obsidian-headless + gws, bundles crew source fallback and runtime scripts |
 | `scripts/entrypoint.sh` | Boot orchestration: selected sync backend, crew install/update, gws credentials, then `opencode web` |
 | `scripts/lib/` | Runtime helpers for crew install, Google Workspace credentials, and workspace setup |
-| `scripts/sync/` | Shell sync modules (`none`, `obsidian`) plus shared selection helpers |
+| `scripts/sync/` | Shell sync modules (`none`, `obsidian`, `git`) plus shared selection helpers |
 | `railway.json` | Railway config-as-code (Dockerfile builder, restart policy, no healthcheck) |
 | `.env.example` | Annotated env var declarations |
 | `.dockerignore` / `.gitignore` / `.gitattributes` | Build-context trim, secret-safety, LF for `*.sh` |
