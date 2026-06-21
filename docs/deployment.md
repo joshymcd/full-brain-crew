@@ -1,7 +1,7 @@
 # Full Brain Crew — Railway Deployment Plan
 
 Detailed build notes and operational reference. For a quick overview, env var table, and repo layout,
-see [README.md](README.md).
+see [README.md](../README.md).
 
 Built step by step:
 - **Step 1 (done):** bare `opencode web` running publicly on Railway.
@@ -18,12 +18,12 @@ Built step by step:
 **Build (`Dockerfile`)** — `node:22-trixie-slim` base (Debian 13, glibc 2.41 — the `gws` binary needs
 GLIBC ≥ 2.39, which Bookworm's 2.36 lacks); installs `git`, `jq`, `gawk`, `ca-certificates`,
 `libsecret-1-0`; `npm i -g opencode-ai obsidian-headless @googleworkspace/cli`; clones the crew into
-`/opt/my-brain-is-full-crew` as a bundled fallback; copies shell sync modules from `sync/` into the image.
+`/opt/my-brain-is-full-crew` as a bundled fallback; copies runtime scripts from `scripts/` into the image.
 Runs from `/vault` by default so opencode resolves the crew config. The crew source is configurable with
 `CREW_REPO` and `CREW_REF`; leave `CREW_REF=main` for latest-on-boot or pin it to a tag/commit for
 reproducible boots.
 
-**Boot (`entrypoint.sh`)**, in order:
+**Boot (`scripts/entrypoint.sh`)**, in order:
 1. **Sync backend selection:** `SYNC_BACKEND` selects `none` or `obsidian`. If unset, `OBSIDIAN_VAULT_NAME`
    still selects `obsidian` for backwards compatibility; otherwise `none` is used. `WORKSPACE_PATH` defaults
    to `/vault`.
@@ -56,7 +56,7 @@ truth. With `SYNC_BACKEND=obsidian`, each boot pulls the cloud vault down and ag
 | Public Networking | **Enabled** | Public `*.up.railway.app` domain |
 | Health Check Path | **Blank** | Password-protected `/` returns 401 (no healthcheck, codified in `railway.json`) |
 
-Environment variables: see [README.md](README.md#environment-variables) and [`.env.example`](.env.example).
+Environment variables: see [README.md](../README.md#environment-variables) and [`.env.example`](../.env.example).
 
 ---
 

@@ -65,15 +65,16 @@ See [`.env.example`](.env.example) for the annotated list.
 
 | File | Purpose |
 |---|---|
-| `Dockerfile` | Builds the image: opencode + obsidian-headless + gws, bundles crew source fallback and sync modules |
-| `entrypoint.sh` | Boot logic: selected sync backend, crew install/update, gws credentials, then `opencode web` |
-| `sync/` | Shell sync modules (`none`, `obsidian`) plus shared selection helpers |
+| `Dockerfile` | Builds the image: opencode + obsidian-headless + gws, bundles crew source fallback and runtime scripts |
+| `scripts/entrypoint.sh` | Boot orchestration: selected sync backend, crew install/update, gws credentials, then `opencode web` |
+| `scripts/lib/` | Runtime helpers for crew install, Google Workspace credentials, and workspace setup |
+| `scripts/sync/` | Shell sync modules (`none`, `obsidian`) plus shared selection helpers |
 | `railway.json` | Railway config-as-code (Dockerfile builder, restart policy, no healthcheck) |
 | `.env.example` | Annotated env var declarations |
 | `.dockerignore` / `.gitignore` / `.gitattributes` | Build-context trim, secret-safety, LF for `*.sh` |
-| `DEPLOYMENT_PLAN.md` | Detailed build (Steps 1–4), Google Workspace onboarding runbook, caveats |
+| `docs/deployment.md` | Detailed build (Steps 1–4), Google Workspace onboarding runbook, caveats |
 
 ## Full setup & details
 
-See **[DEPLOYMENT_PLAN.md](DEPLOYMENT_PLAN.md)** for the step-by-step build, the Google Workspace
+See **[docs/deployment.md](docs/deployment.md)** for the step-by-step build, the Google Workspace
 onboarding runbook, known caveats, and the optional Tailscale (private-access) setup.
