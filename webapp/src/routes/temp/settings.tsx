@@ -1,17 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 import type { ReactNode } from "react";
 
-const OPENCODE_SERVER_URL = "https://brain.joshmcd.xyz/";
-const OPENCODE_AUTH_HEADER = `Basic ${btoa("opencode:letmein")}`;
-
-const client = createOpencodeClient({
-  baseUrl: OPENCODE_SERVER_URL,
-  headers: {
-    Authorization: OPENCODE_AUTH_HEADER,
-  },
-});
+export const Route = createFileRoute("/temp/settings")({ component: TempSettings });
 
 function formatTime(value?: number) {
   if (!value) return "-";
@@ -29,6 +20,8 @@ function statusTone(status?: string) {
 }
 
 function TempSettings() {
+  const { opencodeClient } = Route.useRouteContext();
+
   const queryOptions = {
     refetchInterval: 5_000,
     retry: false,
@@ -36,79 +29,79 @@ function TempSettings() {
 
   const health = useQuery({
     queryKey: ["opencode", "health"],
-    queryFn: async () => (await client.global.health()).data,
+    queryFn: async () => (await opencodeClient.global.health()).data,
     ...queryOptions,
   });
 
   const path = useQuery({
     queryKey: ["opencode", "path"],
-    queryFn: async () => (await client.path.get()).data,
+    queryFn: async () => (await opencodeClient.path.get()).data,
     ...queryOptions,
   });
 
   const project = useQuery({
     queryKey: ["opencode", "project"],
-    queryFn: async () => (await client.project.current()).data,
+    queryFn: async () => (await opencodeClient.project.current()).data,
     ...queryOptions,
   });
 
   const sessions = useQuery({
     queryKey: ["opencode", "sessions"],
-    queryFn: async () => (await client.session.list()).data,
+    queryFn: async () => (await opencodeClient.session.list()).data,
     ...queryOptions,
   });
 
   const providers = useQuery({
     queryKey: ["opencode", "providers"],
-    queryFn: async () => (await client.config.providers()).data,
+    queryFn: async () => (await opencodeClient.config.providers()).data,
     ...queryOptions,
   });
 
   const agents = useQuery({
     queryKey: ["opencode", "agents"],
-    queryFn: async () => (await client.app.agents()).data,
+    queryFn: async () => (await opencodeClient.app.agents()).data,
     ...queryOptions,
   });
 
   const commands = useQuery({
     queryKey: ["opencode", "commands"],
-    queryFn: async () => (await client.command.list()).data,
+    queryFn: async () => (await opencodeClient.command.list()).data,
     ...queryOptions,
   });
 
   const tools = useQuery({
     queryKey: ["opencode", "tools"],
-    queryFn: async () => (await client.tool.ids()).data,
+    queryFn: async () => (await opencodeClient.tool.ids()).data,
     ...queryOptions,
   });
 
   const lsp = useQuery({
     queryKey: ["opencode", "lsp"],
-    queryFn: async () => (await client.lsp.status()).data,
+    queryFn: async () => (await opencodeClient.lsp.status()).data,
     ...queryOptions,
   });
 
   const formatters = useQuery({
     queryKey: ["opencode", "formatters"],
-    queryFn: async () => (await client.formatter.status()).data,
+    queryFn: async () => (await opencodeClient.formatter.status()).data,
     ...queryOptions,
   });
 
   const mcp = useQuery({
     queryKey: ["opencode", "mcp"],
-    queryFn: async () => (await client.mcp.status()).data,
+    queryFn: async () => (await opencodeClient.mcp.status()).data,
     ...queryOptions,
   });
 
   const vcs = useQuery({
     queryKey: ["opencode", "vcs"],
-    queryFn: async () => (await client.vcs.get()).data,
+    queryFn: async () => (await opencodeClient.vcs.get()).data,
     ...queryOptions,
   });
 
   const fileStatus = useQuery({
     queryKey: ["opencode", "file-status"],
-    queryFn: async () => (await client.file.status()).data,
+    queryFn: async () => (await opencodeClient.file.status()).data,
     ...queryOptions,
   });
 
@@ -125,7 +118,7 @@ function TempSettings() {
             className={`inline-block size-2.5 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`}
           />
           <span>{connected ? "Connected" : "Disconnected"}</span>
-          <span>{OPENCODE_SERVER_URL}</span>
+          <span>OpenCode context client</span>
           {health.data?.version && <span>v{health.data.version}</span>}
         </div>
       </div>
@@ -345,5 +338,3 @@ function List({ items, className }: { items: ReactNode[]; className?: string }) 
 function Empty() {
   return <p className="text-sm text-muted-foreground">None</p>;
 }
-
-export const Route = createFileRoute("/temp/settings")({ component: TempSettings });

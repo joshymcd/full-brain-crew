@@ -1,10 +1,4 @@
-import { useState } from "react";
-
-import { Outlet, createRootRoute } from "@tanstack/react-router";
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { TanStackDevtools } from "@tanstack/react-devtools";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";  
 
 import { TooltipProvider } from "@/components/ui/tooltip"; 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -13,13 +7,17 @@ import { SiteHeader } from "@/components/site-header";
 
 import  "@/styles.css";
 import Providers from "@/providers";
+import type { OpencodeClient } from "@opencode-ai/sdk/v2/client";
 
-export const Route = createRootRoute({ 
+interface MyRouterContext {
+  opencodeClient: OpencodeClient
+}
+
+export const Route = createRootRouteWithContext<MyRouterContext>()({
   component: RootComponent,
 });
 
-function RootComponent() { 
-  const [queryClient] = useState(() => new QueryClient());
+function RootComponent() {  
 
   return (
     <>
