@@ -1,69 +1,42 @@
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router";
+import { useState } from "react";
+
+import { Outlet, createRootRoute } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-import { TooltipProvider } from "@/components/ui/tooltip";
-
-import appCss from "../styles.css?url";
+import { TooltipProvider } from "@/components/ui/tooltip"; 
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      {
-        charSet: "utf-8",
-      },
-      {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1",
-      },
-      {
-        title: "TanStack Start Starter",
-      },
-    ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
-  }),
-  shellComponent: RootDocument,
+import  "@/styles.css";
+import Providers from "@/providers";
+
+export const Route = createRootRoute({ 
+  component: RootComponent,
 });
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootComponent() { 
+  const [queryClient] = useState(() => new QueryClient());
+
   return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body style={{ width: "100dvw", height: "100dvh", }} className="bg-background text-foreground">
-        <>
-          <TooltipProvider>
-            <SidebarProvider className="flex flex-col h-full">
-              <SiteHeader />
-              <div className="flex flex-1  ">
-                <AppSidebar />
-                <div className="container mx-auto bg-green-500"><SidebarInset>{children}</SidebarInset></div>
+    <>
+      <Providers>
+        <TooltipProvider>
+          <SidebarProvider className="flex flex-col h-full">
+            <SiteHeader />
+            <div className="flex flex-1  ">
+              <AppSidebar />
+              <div className="container mx-auto bg-green-500">
+                <SidebarInset><Outlet /></SidebarInset>
               </div>
-            </SidebarProvider>
-          </TooltipProvider>
-        </>
-        <TanStackDevtools
-          config={{
-            position: "bottom-right",
-          }}
-          plugins={[
-            {
-              name: "Tanstack Router",
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
-        <Scripts />
-      </body>
-    </html>
+            </div>
+             
+          </SidebarProvider>
+        </TooltipProvider>
+      </Providers>
+    </>
   );
-}
+} 

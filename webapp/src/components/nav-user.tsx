@@ -16,6 +16,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { ChevronsUpDownIcon, SettingsIcon } from "lucide-react"
+import { useNavigate } from "@tanstack/react-router"
 
 export function NavUser({
   user,
@@ -26,6 +27,7 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  const navigate = useNavigate()
 
   return (
     <SidebarMenu>
@@ -52,7 +54,7 @@ export function NavUser({
             align="end"
             sideOffset={4}
           >
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate({ to: "/temp/settings" })}>
               <SettingsIcon />
               Settings
             </DropdownMenuItem>
