@@ -3,9 +3,8 @@
   "style": "radix-sera",
   "rsc": false,
   "tsx": true,
-  "tailwind": {
-    "config": "tailwind.config.js",
-    "css": "src/\u0016styles.css",
+  "tailwind": { 
+    "css": "src/styles.css",
     "baseColor": "taupe",
     "cssVariables": false,
     "prefix": ""
