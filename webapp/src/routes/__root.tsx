@@ -42,11 +42,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body style={{ width: "100dvw", height: "100dvh", }} className="bg-background text-foreground">
         <>
           <TooltipProvider>
-            <SidebarProvider className="flex flex-col">
+            <SidebarProvider className="flex flex-col h-full">
               <SiteHeader />
-              <div className="flex flex-1">
+              <div className="flex flex-1  ">
                 <AppSidebar />
-                <div className="container mx-auto"><SidebarInset>{children}</SidebarInset></div>
+                <div className="container mx-auto bg-green-500"><SidebarInset>{children}</SidebarInset></div>
               </div>
             </SidebarProvider>
           </TooltipProvider>
