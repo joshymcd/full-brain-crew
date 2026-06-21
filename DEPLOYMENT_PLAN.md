@@ -6,7 +6,8 @@ see [README.md](README.md).
 Built step by step:
 - **Step 1 (done):** bare `opencode web` running publicly on Railway.
 - **Step 2 (done):** Full Brain Crew installed/updated into `/vault` at boot (agents/skills load).
-- **Step 3 (done):** Obsidian Sync via `obsidian-headless` — `/vault` syncs with your Obsidian cloud.
+- **Step 3 (done):** pluggable shell sync layer — current backends are `none` and Obsidian Sync via
+  `obsidian-headless`.
 - **Step 4 (done):** Google Workspace (Gmail/Calendar) via the `gws` CLI + injected OAuth credentials.
 - **Later (optional):** private access via Tailscale.
 
@@ -17,28 +18,34 @@ Built step by step:
 **Build (`Dockerfile`)** — `node:22-trixie-slim` base (Debian 13, glibc 2.41 — the `gws` binary needs
 GLIBC ≥ 2.39, which Bookworm's 2.36 lacks); installs `git`, `jq`, `gawk`, `ca-certificates`,
 `libsecret-1-0`; `npm i -g opencode-ai obsidian-headless @googleworkspace/cli`; clones the crew into
-`/opt/my-brain-is-full-crew` as a bundled fallback. Runs from `/vault` so opencode resolves the crew config.
-The crew source is configurable with `CREW_REPO` and `CREW_REF`; leave `CREW_REF=main` for latest-on-boot or
-pin it to a tag/commit for reproducible boots.
+`/opt/my-brain-is-full-crew` as a bundled fallback; copies shell sync modules from `sync/` into the image.
+Runs from `/vault` by default so opencode resolves the crew config. The crew source is configurable with
+`CREW_REPO` and `CREW_REF`; leave `CREW_REF=main` for latest-on-boot or pin it to a tag/commit for
+reproducible boots.
 
 **Boot (`entrypoint.sh`)**, in order:
-1. **Obsidian sync** (if `OBSIDIAN_VAULT_NAME` set): `ob login` (retried with backoff to ride out
-   Obsidian's transient "Server overloaded") → `sync-setup` (with E2EE `--password` if provided) →
-   exclude `.opencode` and `.git` → initial `sync` → background `sync --continuous`. **Non-fatal**: on
-   failure it warns and continues, so a sync misconfig doesn't crash-loop the container (which only
-   hammers Obsidian's API harder).
-2. **Full Brain Crew install/update:** clone `CREW_REPO` at `CREW_REF` into `/tmp` and run
-   `launchme.sh --platform opencode --target /vault`, feeding the reinstall confirmation non-interactively.
-   If the runtime clone fails, fall back to the bundled `/opt/my-brain-is-full-crew` source. The upstream
-   installer overwrites crew-owned core files but preserves vault notes and custom agents.
-3. **gws credentials** (if `GWS_CREDENTIALS_JSON` set): write the JSON to `~/.config/gws/credentials.json`
+1. **Sync backend selection:** `SYNC_BACKEND` selects `none` or `obsidian`. If unset, `OBSIDIAN_VAULT_NAME`
+   still selects `obsidian` for backwards compatibility; otherwise `none` is used. `WORKSPACE_PATH` defaults
+   to `/vault`.
+2. **Sync prepare/start:** the selected module runs `sync_prepare "$WORKSPACE_PATH"`, then
+   `sync_start "$WORKSPACE_PATH"`. Sync failures are **non-fatal** by default; set `SYNC_REQUIRED=true` to
+   fail startup when sync is unavailable.
+3. **Obsidian backend details:** `ob login` (retried with backoff to ride out Obsidian's transient
+   "Server overloaded") → `sync-setup` (with E2EE `--password` if provided) → exclude `.opencode` and `.git`
+   → initial `sync` → background `sync --continuous`.
+4. **Full Brain Crew install/update:** clone `CREW_REPO` at `CREW_REF` into `/tmp` and run
+   `launchme.sh --platform opencode --target "$WORKSPACE_PATH"`, feeding the reinstall confirmation
+   non-interactively. If the runtime clone fails, fall back to the bundled `/opt/my-brain-is-full-crew`
+   source. The upstream installer overwrites crew-owned core files but preserves vault notes and custom agents.
+5. **gws credentials** (if `GWS_CREDENTIALS_JSON` set): write the JSON to `~/.config/gws/credentials.json`
    and export `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` so crew agents shelling out to `gws` are authed.
-4. **OpenCode project detection:** initialize `/vault/.git` if needed so OpenCode treats `/vault` as the
-   active project/worktree instead of the global `/` project.
-5. **`opencode web`** on `0.0.0.0:$PORT`, protected by `OPENCODE_SERVER_PASSWORD`.
+6. **OpenCode project detection:** initialize `$WORKSPACE_PATH/.git` if needed so OpenCode treats the
+   workspace as the active project/worktree instead of the global `/` project.
+7. **`opencode web`** on `0.0.0.0:$PORT`, protected by `OPENCODE_SERVER_PASSWORD`.
 
-**Why ephemeral `/vault` is fine:** with Obsidian Sync on, the cloud vault is the source of truth — each
-boot pulls it down and agent changes sync back up. No Railway volume required.
+**Why ephemeral `/vault` can be fine:** with a real sync backend on, the remote provider is the source of
+truth. With `SYNC_BACKEND=obsidian`, each boot pulls the cloud vault down and agent changes sync back up. With
+`SYNC_BACKEND=none`, Railway redeploys remain ephemeral unless a volume or other persistence is added.
 
 ---
 
@@ -57,11 +64,14 @@ Environment variables: see [README.md](README.md#environment-variables) and [`.e
 
 - **Step 1/2 (opencode + crew):** logs should show `Full Brain Crew install/update complete`; open the URL,
   log in, and confirm the crew's agents/skills appear in the UI.
-- **Step 3 (Obsidian):** create the vault in Obsidian Sync first; set the `OBSIDIAN_*` vars; on redeploy the
-  log should show `ob login` → `sync-setup` → `sync` with no prompt. Confirm real notes appear in `/vault`,
-  agent edits show in local Obsidian, and `.opencode/` plus `.git/` did **not** sync up into your vault.
-- **OpenCode project:** the log should show `/vault` was initialized as a git worktree on first boot. In the
-  UI, the recent/opened project should show `/vault`, not `/`.
+- **Sync disabled:** leave `SYNC_BACKEND` and `OBSIDIAN_VAULT_NAME` unset, or set `SYNC_BACKEND=none`; logs
+  should show the `none` backend and no Obsidian login attempt.
+- **Step 3 (Obsidian):** create the vault in Obsidian Sync first; set either `SYNC_BACKEND=obsidian` plus the
+  `OBSIDIAN_*` vars, or rely on legacy auto-selection by setting `OBSIDIAN_VAULT_NAME`; on redeploy the log
+  should show `ob login` → `sync-setup` → `sync` with no prompt. Confirm real notes appear in `/vault`, agent
+  edits show in local Obsidian, and `.opencode/` plus `.git/` did **not** sync up into your vault.
+- **OpenCode project:** the log should show the workspace was initialized as a git worktree on first boot. In
+  the UI, the recent/opened project should show `/vault`, not `/` when using the default path.
 - **Step 4 (Google):** after onboarding (below), the log shows `gws credentials materialized`; ask the crew
   to read your calendar.
 
@@ -106,6 +116,8 @@ while Gmail scopes are granted. Request only the scopes you need.
 - **Concurrent writes.** Agents writing while continuous sync pulls remote edits can create Obsidian
   sync-conflict files — inherent to bidirectional sync.
 - **MFA assumption.** Obsidian login is automated for an account with no 2FA; enabling 2FA later breaks boots.
+- **Future sync providers.** Git/Drive-style providers are not implemented yet; this refactor only creates the
+  shell module seam for adding them later.
 - **gws build risk.** If `npm i -g @googleworkspace/cli` ever fails building a native keyring module,
   add `build-essential` + `libsecret-1-dev` to the Dockerfile (`libsecret-1-0` runtime lib is already there).
 
