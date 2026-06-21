@@ -122,10 +122,12 @@ git_sync_once() {
   fi
 
   git -C "${workspace_path}" fetch origin || return 1
-  if ! git -C "${workspace_path}" rebase "origin/${branch}"; then
-    git -C "${workspace_path}" rebase --abort >/dev/null 2>&1 || true
-    sync_error "Git rebase conflict while syncing ${branch}; manual resolution is required."
-    return 1
+  if git -C "${workspace_path}" show-ref --verify --quiet "refs/remotes/origin/${branch}"; then
+    if ! git -C "${workspace_path}" rebase "origin/${branch}"; then
+      git -C "${workspace_path}" rebase --abort >/dev/null 2>&1 || true
+      sync_error "Git rebase conflict while syncing ${branch}; manual resolution is required."
+      return 1
+    fi
   fi
 
   git -C "${workspace_path}" push origin "HEAD:${branch}" || return 1
