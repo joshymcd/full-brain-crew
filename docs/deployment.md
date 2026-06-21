@@ -6,7 +6,7 @@ see [README.md](../README.md).
 Built step by step:
 - **Step 1 (done):** bare `opencode web` running publicly on Railway.
 - **Step 2 (done):** Full Brain Crew installed/updated into `/vault` at boot (agents/skills load).
-- **Step 3 (done):** pluggable shell sync layer — current backends are `none`, Obsidian Sync via
+- **Step 3 (done):** pluggable shell sync layer — current backends are `none`, `local`, Obsidian Sync via
   `obsidian-headless`, and Git.
 - **Step 4 (done):** Google Workspace (Gmail/Calendar) via the `gws` CLI + injected OAuth credentials.
 - **Later (optional):** private access via Tailscale.
@@ -24,7 +24,7 @@ Runs from `/vault` by default so opencode resolves the crew config. The crew sou
 reproducible boots.
 
 **Boot (`scripts/entrypoint.sh`)**, in order:
-1. **Sync backend selection:** `SYNC_BACKEND` selects `none`, `obsidian`, or `git`. If unset,
+1. **Sync backend selection:** `SYNC_BACKEND` selects `none`, `local`, `obsidian`, or `git`. If unset,
    `OBSIDIAN_VAULT_NAME` still selects `obsidian` for backwards compatibility; otherwise `none` is used.
    `WORKSPACE_PATH` defaults to `/vault`.
 2. **Sync prepare/start:** the selected module runs `sync_prepare "$WORKSPACE_PATH"`, then
@@ -49,6 +49,7 @@ reproducible boots.
 **Why ephemeral `/vault` can be fine:** with a real sync backend on, the remote provider is the source of
 truth. With `SYNC_BACKEND=obsidian`, each boot pulls the cloud vault down and agent changes sync back up. With
 `SYNC_BACKEND=git`, each boot clones/pulls the Git remote and the background loop commits/pushes changes. With
+`SYNC_BACKEND=local`, no remote sync runs and persistence comes from the mounted filesystem. With
 `SYNC_BACKEND=none`, Railway redeploys remain ephemeral unless a volume or other persistence is added.
 
 ---
@@ -70,6 +71,8 @@ Environment variables: see [README.md](../README.md#environment-variables) and [
   log in, and confirm the crew's agents/skills appear in the UI.
 - **Sync disabled:** leave `SYNC_BACKEND` and `OBSIDIAN_VAULT_NAME` unset, or set `SYNC_BACKEND=none`; logs
   should show the `none` backend and no Obsidian login attempt.
+- **Local persistence:** set `SYNC_BACKEND=local` and provide a Docker bind mount, Railway volume, or other
+  persistent filesystem at `WORKSPACE_PATH`; logs should show no remote sync attempt.
 - **Step 3 (Obsidian):** create the vault in Obsidian Sync first; set either `SYNC_BACKEND=obsidian` plus the
   `OBSIDIAN_*` vars, or rely on legacy auto-selection by setting `OBSIDIAN_VAULT_NAME`; on redeploy the log
   should show `ob login` → `sync-setup` → `sync` with no prompt. Confirm real notes appear in `/vault`, agent
