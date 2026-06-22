@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import * as React from "react";
 import type { ReactNode } from "react";
 
 export const Route = createFileRoute("/temp/settings")({ component: TempSettings });
@@ -20,7 +21,15 @@ function statusTone(status?: string) {
 }
 
 function TempSettings() {
-  const { opencodeClient } = Route.useRouteContext();
+  const {
+    opencodeClient,
+    opencodeServerUrl,
+    opencodeAuthenticated,
+    setOpencodeAuth,
+    clearOpencodeAuth,
+  } = Route.useRouteContext();
+  const [username, setUsername] = React.useState("opencode");
+  const [password, setPassword] = React.useState("");
 
   const queryOptions = {
     refetchInterval: 5_000,
@@ -30,78 +39,91 @@ function TempSettings() {
   const health = useQuery({
     queryKey: ["opencode", "health"],
     queryFn: async () => (await opencodeClient.global.health()).data,
+    enabled: opencodeAuthenticated,
     ...queryOptions,
   });
 
   const path = useQuery({
     queryKey: ["opencode", "path"],
     queryFn: async () => (await opencodeClient.path.get()).data,
+    enabled: opencodeAuthenticated,
     ...queryOptions,
   });
 
   const project = useQuery({
     queryKey: ["opencode", "project"],
     queryFn: async () => (await opencodeClient.project.current()).data,
+    enabled: opencodeAuthenticated,
     ...queryOptions,
   });
 
   const sessions = useQuery({
     queryKey: ["opencode", "sessions"],
     queryFn: async () => (await opencodeClient.session.list()).data,
+    enabled: opencodeAuthenticated,
     ...queryOptions,
   });
 
   const providers = useQuery({
     queryKey: ["opencode", "providers"],
     queryFn: async () => (await opencodeClient.config.providers()).data,
+    enabled: opencodeAuthenticated,
     ...queryOptions,
   });
 
   const agents = useQuery({
     queryKey: ["opencode", "agents"],
     queryFn: async () => (await opencodeClient.app.agents()).data,
+    enabled: opencodeAuthenticated,
     ...queryOptions,
   });
 
   const commands = useQuery({
     queryKey: ["opencode", "commands"],
     queryFn: async () => (await opencodeClient.command.list()).data,
+    enabled: opencodeAuthenticated,
     ...queryOptions,
   });
 
   const tools = useQuery({
     queryKey: ["opencode", "tools"],
     queryFn: async () => (await opencodeClient.tool.ids()).data,
+    enabled: opencodeAuthenticated,
     ...queryOptions,
   });
 
   const lsp = useQuery({
     queryKey: ["opencode", "lsp"],
     queryFn: async () => (await opencodeClient.lsp.status()).data,
+    enabled: opencodeAuthenticated,
     ...queryOptions,
   });
 
   const formatters = useQuery({
     queryKey: ["opencode", "formatters"],
     queryFn: async () => (await opencodeClient.formatter.status()).data,
+    enabled: opencodeAuthenticated,
     ...queryOptions,
   });
 
   const mcp = useQuery({
     queryKey: ["opencode", "mcp"],
     queryFn: async () => (await opencodeClient.mcp.status()).data,
+    enabled: opencodeAuthenticated,
     ...queryOptions,
   });
 
   const vcs = useQuery({
     queryKey: ["opencode", "vcs"],
     queryFn: async () => (await opencodeClient.vcs.get()).data,
+    enabled: opencodeAuthenticated,
     ...queryOptions,
   });
 
   const fileStatus = useQuery({
     queryKey: ["opencode", "file-status"],
     queryFn: async () => (await opencodeClient.file.status()).data,
+    enabled: opencodeAuthenticated,
     ...queryOptions,
   });
 
@@ -113,15 +135,61 @@ function TempSettings() {
     <div className="space-y-6 p-8">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold">OpenCode Server</h1>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span
             className={`inline-block size-2.5 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`}
           />
-          <span>{connected ? "Connected" : "Disconnected"}</span>
-          <span>OpenCode context client</span>
+          <span>{connected ? "Connected" : opencodeAuthenticated ? "Disconnected" : "Sign in required"}</span>
+          <span>{opencodeServerUrl}</span>
           {health.data?.version && <span>v{health.data.version}</span>}
+          {opencodeAuthenticated && (
+            <button
+              className="ml-auto rounded-md border px-3 py-1 text-xs text-foreground"
+              type="button"
+              onClick={clearOpencodeAuth}
+            >
+              Clear credentials
+            </button>
+          )}
         </div>
       </div>
+
+      {!opencodeAuthenticated && (
+        <form
+          className="max-w-md space-y-4 rounded-lg border p-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setOpencodeAuth({ username, password });
+          }}
+        >
+          <div>
+            <h2 className="font-semibold">Sign in to OpenCode</h2>
+            <p className="text-sm text-muted-foreground">
+              Credentials are stored in this browser session and sent as Basic Auth with SDK requests.
+            </p>
+          </div>
+          <label className="block space-y-1 text-sm">
+            <span className="text-muted-foreground">Username</span>
+            <input
+              className="w-full rounded-md border bg-background px-3 py-2 text-foreground"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+            />
+          </label>
+          <label className="block space-y-1 text-sm">
+            <span className="text-muted-foreground">Password</span>
+            <input
+              className="w-full rounded-md border bg-background px-3 py-2 text-foreground"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </label>
+          <button className="rounded-md border px-4 py-2 text-sm font-medium" type="submit">
+            Connect
+          </button>
+        </form>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard

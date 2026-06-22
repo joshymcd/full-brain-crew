@@ -6,7 +6,7 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite"; 
 
-const config = defineConfig({ 
+const config = defineConfig({
   lint: { options: { typeAware: true, typeCheck: true } },
   resolve: { tsconfigPaths: true },
   plugins: [

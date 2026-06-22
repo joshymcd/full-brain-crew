@@ -7,13 +7,9 @@ import { SiteHeader } from "@/components/site-header";
 
 import  "@/styles.css";
 import Providers from "@/providers";
-import type { OpencodeClient } from "@opencode-ai/sdk/v2/client";
+import type { OpencodeRouterContext } from "@/opencode-client";
 
-interface MyRouterContext {
-  opencodeClient: OpencodeClient
-}
-
-export const Route = createRootRouteWithContext<MyRouterContext>()({
+export const Route = createRootRouteWithContext<OpencodeRouterContext>()({
   component: RootComponent,
 });
 

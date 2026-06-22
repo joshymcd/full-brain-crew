@@ -49,6 +49,9 @@ See [`.env.example`](.env.example) for the annotated list.
 | Variable | When | Purpose |
 |---|---|---|
 | `OPENCODE_SERVER_PASSWORD` | **Required** | Password for the public web UI |
+| `VITE_OPENCODE_SERVER_URL` | Webapp | Public/base URL used by the local webapp OpenCode SDK client |
+| `OPENCODE_PORT` | Local Docker | Host port mapped to the OpenCode container's fixed port `8080` |
+| `WEBAPP_PORT` | Local Docker | Host port mapped to the Vite webapp container's fixed port `3000` |
 | `OPENCODE_API_KEY` | **Required to use** | OpenCode Go / Zen API key (auto-detected) |
 | `OPENCODE_SERVER_USERNAME` | Optional | Web UI username (defaults to `opencode`) |
 | `CREW_REPO` / `CREW_REF` | Optional | Full Brain Crew source and ref installed at boot; defaults to upstream `main` |
@@ -68,6 +71,8 @@ See [`.env.example`](.env.example) for the annotated list.
 | `GIT_COMMIT_MESSAGE` | Git backend | Commit message for automatic workspace commits |
 | `GWS_CREDENTIALS_JSON` | Enables Google | Contents of a locally-exported `gws` credentials file (secret) |
 | `PORT` | — | Auto-injected by Railway — **do not set** |
+
+For local development, keep webapp-only browser env in `webapp/.env` and Docker/OpenCode env in the root `.env`. The webapp only needs `VITE_OPENCODE_SERVER_URL`; username/password are entered in the browser and stored for the session. Docker Compose uses the root `.env`. Container ports stay fixed (`8080` for OpenCode, `3000` for the webapp); `OPENCODE_PORT` and `WEBAPP_PORT` only control host-side port mappings.
 
 ## Repo layout
 
