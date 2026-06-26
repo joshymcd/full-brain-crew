@@ -1,0 +1,13 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK",
+    "buildCommand": "corepack enable && pnpm install --frozen-lockfile && pnpm run build",
+    "watchPatterns": ["/webapp/**"]
+  },
+  "deploy": {
+    "startCommand": "corepack enable && pnpm run preview -- --host 0.0.0.0 --port $PORT",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  }
+}
