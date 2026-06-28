@@ -1,0 +1,12 @@
+:{$PORT:8080}
+
+@opencode_host host {$OPENCODE_PUBLIC_HOST:opencode.localhost}
+handle @opencode_host {
+	reverse_proxy {$OPENCODE_INTERNAL_HOST:127.0.0.1}:{$OPENCODE_INTERNAL_PORT:8081}
+}
+
+handle {
+	root * /usr/share/caddy
+	try_files {path} /index.html
+	file_server
+}

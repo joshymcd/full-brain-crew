@@ -1,4 +1,14 @@
 .git
+.env
+.env*
 node_modules
+dist
+.vite
 *.md
 .vault
+webapp/node_modules
+webapp/dist
+webapp/.vite
+webapp/.env
+webapp/.env*
+!webapp/.env.example

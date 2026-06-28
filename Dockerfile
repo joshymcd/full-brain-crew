@@ -1,17 +1,34 @@
 # Debian 13 (Trixie, glibc 2.41) — the gws CLI binary requires GLIBC >= 2.39,
 # which Bookworm (glibc 2.36) does not provide.
+FROM node:22-trixie-slim AS webapp-builder
+
+WORKDIR /app
+ENV CI=true
+ARG VITE_OPENCODE_SERVER_URL
+RUN apt-get update && apt-get install -y ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN corepack enable
+
+COPY webapp/package.json webapp/pnpm-lock.yaml webapp/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
+
+COPY webapp/ ./
+RUN if [ -n "${VITE_OPENCODE_SERVER_URL:-}" ]; then pnpm run build; else unset VITE_OPENCODE_SERVER_URL && pnpm run build; fi
+
 FROM node:22-trixie-slim
 
 LABEL org.opencontainers.image.title="Full Brain Crew on Railway" \
-      org.opencontainers.image.description="OpenCode web UI with Full Brain Crew, optional Obsidian Sync, and Google Workspace CLI" \
+      org.opencontainers.image.description="Full Brain Crew webapp with Caddy, OpenCode, optional Obsidian Sync, and Google Workspace CLI" \
       org.opencontainers.image.source="https://github.com/joshymcd/full-brain-crew" \
       org.opencontainers.image.base.name="docker.io/library/node:22-trixie-slim"
 
 # git: clone the crew repo.  jq + gawk: required by the opencode config-merge adapter.
 # ca-certificates: TLS for git https and npm postinstall binary fetches.
 # libsecret-1-0: keyring backend the gws CLI may load at runtime.
-RUN apt-get update && apt-get install -y git jq gawk ca-certificates libsecret-1-0 \
+RUN apt-get update && apt-get install -y git jq gawk ca-certificates libsecret-1-0 caddy \
     && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable
 
 # OpenCode (web UI + agent runtime)
 RUN npm install -g opencode-ai
@@ -44,8 +61,11 @@ RUN git clone "${CREW_REPO}" /opt/my-brain-is-full-crew \
     && rm -rf .git
 
 COPY scripts/ /usr/local/lib/full-brain-crew/scripts/
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=webapp-builder /app/dist/ /usr/share/caddy/
 RUN chmod +x /usr/local/lib/full-brain-crew/scripts/entrypoint.sh
 
 # opencode resolves .opencode/ and AGENTS.md from its working directory, so run from /vault.
 WORKDIR /vault
+EXPOSE 8080
 ENTRYPOINT ["/usr/local/lib/full-brain-crew/scripts/entrypoint.sh"]

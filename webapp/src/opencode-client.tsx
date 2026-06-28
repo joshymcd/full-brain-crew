@@ -2,7 +2,17 @@ import { createOpencodeClient, type OpencodeClient } from "@opencode-ai/sdk/v2/c
 import * as React from "react";
 
 const OPENCODE_AUTH_STORAGE_KEY = "opencode-basic-auth";
-const OPENCODE_SERVER_URL = import.meta.env.VITE_OPENCODE_SERVER_URL ?? "http://localhost:8080/";
+
+function defaultOpencodeServerUrl() {
+  const { hostname, port, protocol } = window.location;
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return `${protocol}//opencode.localhost${port ? `:${port}` : ""}/`;
+  }
+
+  return `${protocol}//opencode.${window.location.host}/`;
+}
+
+const OPENCODE_SERVER_URL = import.meta.env.VITE_OPENCODE_SERVER_URL ?? defaultOpencodeServerUrl();
 
 type OpencodeAuth = {
   username: string;

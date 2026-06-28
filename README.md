@@ -6,8 +6,10 @@ with pluggable sync backends and optional Google Workspace (Gmail/Calendar) inte
 
 ## What it runs
 
-- **OpenCode web UI** (`opencode web`) — the agent runtime + browser UI, served publicly on Railway and
-  protected by a password. Models come from **OpenCode Go / Zen** via `OPENCODE_API_KEY`.
+- **Full Brain Crew web app** — a React UI served by Caddy on the main app domain.
+- **OpenCode web UI** (`opencode web`) — the agent runtime + fallback browser UI, proxied by Caddy on
+  the `opencode.<main-domain>` subdomain and protected by a password. Models come from **OpenCode Go / Zen** via
+  `OPENCODE_API_KEY`.
 - **Full Brain Crew** — treated as a boot-time dependency: each startup installs/updates crew-owned files in
   `/vault` (`.opencode/`, `AGENTS.md`, `Meta/scripts`) from `CREW_REPO` + `CREW_REF`.
 - **Workspace sync** *(optional)* — a selected backend prepares and persists `/vault`. Current backends are
@@ -24,7 +26,8 @@ with pluggable sync backends and optional Google Workspace (Gmail/Calendar) inte
 Railway Container (node:22-trixie-slim)
 ├── sync backend       ──syncs──▶  Obsidian Sync / Git remote / local volume / none
 ├── crew installer     ──updates─▶  /vault/.opencode/ + /vault/AGENTS.md + /vault/Meta/scripts
-├── OpenCode web UI (cwd=/vault) ──serves──▶  https://<service>.up.railway.app  (public, password-protected)
+├── OpenCode web (cwd=/vault, private) ──▶  127.0.0.1:8081
+├── Caddy public entrypoint ──serves──▶  app domain webapp, opencode subdomain OpenCode UI/API
 └── gws CLI (optional)  ──▶  Gmail / Google Calendar
 ```
 
@@ -37,9 +40,10 @@ each boot clones/pulls it down, and workspace changes are periodically committed
 
 1. Connect this repo to a Railway service — it auto-detects the Dockerfile via [`railway.json`](railway.json).
 2. Set the environment variables below (minimum: `OPENCODE_SERVER_PASSWORD` + `OPENCODE_API_KEY`).
-3. Service settings: **Public Networking → Enabled**, **Health Check Path → blank** (a password-protected
-   `/` returns 401, which would fail an HTTP health check).
-4. Deploy, open the `*.up.railway.app` URL, and log in.
+3. Service settings: **Public Networking → Enabled**. Route your main domain to the app and
+   `opencode.<main-domain>` to the same service.
+4. Deploy, open the `*.up.railway.app` URL, and log in with the same OpenCode username/password. The
+   webapp sends those credentials as Basic Auth to the OpenCode subdomain.
 
 ## Environment variables
 
@@ -49,9 +53,11 @@ See [`.env.example`](.env.example) for the annotated list.
 | Variable | When | Purpose |
 |---|---|---|
 | `OPENCODE_SERVER_PASSWORD` | **Required** | Password for the public web UI |
-| `VITE_OPENCODE_SERVER_URL` | Webapp | Public/base URL used by the local webapp OpenCode SDK client |
-| `OPENCODE_PORT` | Local Docker | Host port mapped to the OpenCode container's fixed port `8080` |
-| `WEBAPP_PORT` | Local Docker | Host port mapped to the Vite webapp container's fixed port `3000` |
+| `APP_PUBLIC_URL` | Public deploy | Public origin for the app; passed to OpenCode's CORS allowlist |
+| `VITE_OPENCODE_SERVER_URL` | Public deploy | OpenCode SDK base URL; usually `https://opencode.<main-domain>/` |
+| `OPENCODE_PUBLIC_HOST` | Optional routing override | Caddy host matcher for OpenCode; parsed from `VITE_OPENCODE_SERVER_URL` when unset |
+| `APP_PORT` | Local Docker | Host port mapped to the public Caddy listener's fixed container port `8080` |
+| `OPENCODE_INTERNAL_HOST` / `OPENCODE_INTERNAL_PORT` | Optional internal runtime | Private OpenCode listener behind Caddy; defaults to `127.0.0.1:8081` |
 | `OPENCODE_API_KEY` | **Required to use** | OpenCode Go / Zen API key (auto-detected) |
 | `OPENCODE_SERVER_USERNAME` | Optional | Web UI username (defaults to `opencode`) |
 | `CREW_REPO` / `CREW_REF` | Optional | Full Brain Crew source and ref installed at boot; defaults to upstream `main` |
@@ -72,14 +78,15 @@ See [`.env.example`](.env.example) for the annotated list.
 | `GWS_CREDENTIALS_JSON` | Enables Google | Contents of a locally-exported `gws` credentials file (secret) |
 | `PORT` | — | Auto-injected by Railway — **do not set** |
 
-For local development, keep webapp-only browser env in `webapp/.env` and Docker/OpenCode env in the root `.env`. The webapp only needs `VITE_OPENCODE_SERVER_URL`; username/password are entered in the browser and stored for the session. Docker Compose uses the root `.env`. Container ports stay fixed (`8080` for OpenCode, `3000` for the webapp); `OPENCODE_PORT` and `WEBAPP_PORT` only control host-side port mappings.
+For local Docker usage, copy `.env.example` to `.env` and run `docker compose up --build`. The app is served at `http://localhost:${APP_PORT:-8080}/`, and OpenCode is served at `http://opencode.localhost:${APP_PORT:-8080}/`. For production, set `APP_PUBLIC_URL` to the main app origin and `VITE_OPENCODE_SERVER_URL` to the OpenCode subdomain URL.
 
 ## Repo layout
 
 | File | Purpose |
 |---|---|
-| `Dockerfile` | Builds the image: opencode + obsidian-headless + gws, bundles crew source fallback and runtime scripts |
-| `scripts/entrypoint.sh` | Boot orchestration: selected sync backend, crew install/update, gws credentials, then `opencode web` |
+| `Dockerfile` | Builds the unified image: webapp static assets, Caddy, opencode, obsidian-headless, gws, crew source fallback, and runtime scripts |
+| `deploy/Caddyfile` | Public routing: app host serves the webapp, OpenCode host proxies all OpenCode UI/API traffic |
+| `scripts/entrypoint.sh` | Boot orchestration: selected sync backend, crew install/update, gws credentials, then private OpenCode plus Caddy |
 | `scripts/lib/` | Runtime helpers for crew install, Google Workspace credentials, and workspace setup |
 | `scripts/sync/` | Shell sync modules (`none`, `local`, `obsidian`, `git`) plus shared selection helpers |
 | `railway.json` | Railway config-as-code (Dockerfile builder, restart policy, no healthcheck) |
