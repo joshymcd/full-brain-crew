@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 import type {
   AssistantMessage,
@@ -86,9 +86,12 @@ type ChatLogEntry = {
 function ChatPage() {
   const { chatId } = Route.useParams();
   const { opencodeClient, opencodeDirectory } = Route.useRouteContext();
+  const queryClient = useQueryClient();
+  const [messageText, setMessageText] = React.useState("");
   const locationQuery = opencodeDirectory ? { directory: opencodeDirectory } : undefined;
+  const chatLogQueryKey = ["opencode", "chat-log", opencodeDirectory, chatId] as const;
   const chatLogQuery = useQuery({
-    queryKey: ["opencode", "chat-log", opencodeDirectory, chatId],
+    queryKey: chatLogQueryKey,
     queryFn: async () =>
       (
         await opencodeClient.session.messages({
@@ -98,7 +101,31 @@ function ChatPage() {
       ).data,
     retry: false,
   });
+  const sendMessage = useMutation({
+    mutationFn: async (text: string) =>
+      (
+        await opencodeClient.session.prompt({
+          ...locationQuery,
+          sessionID: chatId,
+          parts: [{ type: "text", text }],
+        })
+      ).data,
+    onSuccess: async () => {
+      setMessageText("");
+      await queryClient.invalidateQueries({ queryKey: chatLogQueryKey });
+    },
+  });
   const chatRows = mapOpenCodeChatLog(chatLogQuery.data ?? []);
+  const canSend = messageText.trim().length > 0 && !sendMessage.isPending;
+
+  function handleSendMessage(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const text = messageText.trim();
+    if (!text) return;
+
+    sendMessage.mutate(text);
+  }
 
   return (
     <div className="flex h-[calc(100vh-var(--header-height))] min-h-0 flex-col bg-background text-foreground">
@@ -185,17 +212,27 @@ function ChatPage() {
       </MessageScrollerProvider>
 
       <footer className="shrink-0 border-t bg-card px-4 py-4 sm:px-6">
-        <div className="mx-auto flex w-full max-w-4xl items-center gap-2">
+        <form
+          className="mx-auto flex w-full max-w-4xl items-center gap-2"
+          onSubmit={handleSendMessage}
+        >
           <Input
-            disabled
             aria-label="Message composer"
-            placeholder="OpenCode integration coming soon"
+            disabled={sendMessage.isPending}
+            placeholder="Message OpenCode"
+            value={messageText}
+            onChange={(event) => setMessageText(event.target.value)}
           />
-          <Button disabled aria-label="Send message">
-            Send
+          <Button disabled={!canSend} type="submit" aria-label="Send message">
+            {sendMessage.isPending ? "Sending" : "Send"}
             <SendIcon data-icon="inline-end" />
           </Button>
-        </div>
+        </form>
+        {sendMessage.error ? (
+          <p className="mx-auto mt-2 max-w-4xl text-sm text-destructive">
+            {getErrorMessage(sendMessage.error)}
+          </p>
+        ) : null}
       </footer>
     </div>
   );
