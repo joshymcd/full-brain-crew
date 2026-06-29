@@ -1,6 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import type { Event as OpenCodeEvent } from "@opencode-ai/sdk/v2/client";
+import { useLocation, useNavigate } from "@tanstack/react-router";
+import type { Event as OpenCodeEvent, Session } from "@opencode-ai/sdk/v2/client";
 import * as React from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -49,12 +51,30 @@ function shouldRefreshChat(event: OpenCodeEvent) {
   );
 }
 
+function createdSession(event: OpenCodeEvent) {
+  if (event.type !== "session.created") return undefined;
+
+  return event.properties.info as Session;
+}
+
+function chatIDFromPathname(pathname: string) {
+  return pathname.match(/^\/chats\/([^/]+)/)?.[1];
+}
+
+function sessionTitle(session: Session) {
+  return session.title || session.slug || session.id;
+}
+
 export function OpenCodeEventProvider({ children, opencode }: OpenCodeEventProviderProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [username, setUsername] = React.useState("opencode");
   const [password, setPassword] = React.useState("");
   const [authError, setAuthError] = React.useState<string>();
   const pendingInvalidations = React.useRef(new Map<string, number>());
+  const shownChildSessionToasts = React.useRef(new Set<string>());
+  const currentChatID = chatIDFromPathname(location.pathname);
 
   React.useEffect(() => {
     return () => {
@@ -99,9 +119,27 @@ export function OpenCodeEventProvider({ children, opencode }: OpenCodeEventProvi
           if (cancelled) break;
 
           const sessionID = eventSessionID(event);
+          const newSession = createdSession(event);
 
           if (shouldRefreshSessions(event)) {
             invalidateSoon(["opencode", "sessions", opencode.opencodeDirectory]);
+          }
+
+          if (
+            currentChatID &&
+            newSession?.parentID === currentChatID &&
+            !shownChildSessionToasts.current.has(newSession.id)
+          ) {
+            shownChildSessionToasts.current.add(newSession.id);
+            toast("Sub-session started", {
+              description: sessionTitle(newSession),
+              action: {
+                label: "Open",
+                onClick: () => {
+                  void navigate({ to: "/chats/$chatId", params: { chatId: newSession.id } });
+                },
+              },
+            });
           }
 
           if (sessionID && shouldRefreshChat(event)) {
@@ -125,7 +163,7 @@ export function OpenCodeEventProvider({ children, opencode }: OpenCodeEventProvi
       cancelled = true;
       abortController.abort();
     };
-  }, [invalidateSoon, opencode]);
+  }, [currentChatID, invalidateSoon, navigate, opencode]);
 
   function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
