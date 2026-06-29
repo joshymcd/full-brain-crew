@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
+import { OpenCodeEventProvider } from "@/providers";
 
 import "@/styles.css";
 import Providers from "@/providers";
@@ -14,24 +15,27 @@ export const Route = createRootRouteWithContext<OpencodeRouterContext>()({
 });
 
 function RootComponent() {
-  const { opencodeClient, opencodeDirectory } = Route.useRouteContext();
+  const opencode = Route.useRouteContext();
+  const { opencodeClient, opencodeDirectory } = opencode;
 
   return (
     <>
       <Providers>
-        <TooltipProvider>
-          <SidebarProvider className="flex flex-col h-full">
-            <SiteHeader />
-            <div className="flex flex-1  ">
-              <AppSidebar opencodeClient={opencodeClient} opencodeDirectory={opencodeDirectory} />
-              <div className="container mx-auto">
-                <SidebarInset>
-                  <Outlet />
-                </SidebarInset>
+        <OpenCodeEventProvider opencode={opencode}>
+          <TooltipProvider>
+            <SidebarProvider className="flex flex-col h-full">
+              <SiteHeader />
+              <div className="flex flex-1  ">
+                <AppSidebar opencodeClient={opencodeClient} opencodeDirectory={opencodeDirectory} />
+                <div className="container mx-auto">
+                  <SidebarInset>
+                    <Outlet />
+                  </SidebarInset>
+                </div>
               </div>
-            </div>
-          </SidebarProvider>
-        </TooltipProvider>
+            </SidebarProvider>
+          </TooltipProvider>
+        </OpenCodeEventProvider>
       </Providers>
     </>
   );

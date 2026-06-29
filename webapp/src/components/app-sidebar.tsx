@@ -60,7 +60,6 @@ export function AppSidebar({ opencodeClient, opencodeDirectory, ...props }: AppS
         })
       ).data,
     retry: false,
-    refetchInterval: 5_000,
   });
   const createSession = useMutation({
     mutationFn: async () => {
