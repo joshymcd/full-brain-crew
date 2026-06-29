@@ -24,7 +24,7 @@ function RootComponent() {
             <SiteHeader />
             <div className="flex flex-1  ">
               <AppSidebar opencodeClient={opencodeClient} opencodeDirectory={opencodeDirectory} />
-              <div className="container mx-auto bg-green-500">
+              <div className="container mx-auto">
                 <SidebarInset>
                   <Outlet />
                 </SidebarInset>

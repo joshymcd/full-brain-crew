@@ -20,6 +20,21 @@ function statusTone(status?: string) {
   return "text-yellow-600";
 }
 
+function debugTime() {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(Date.now());
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+
+  return JSON.stringify(error);
+}
+
 function TempSettings() {
   const {
     opencodeClient,
@@ -30,6 +45,15 @@ function TempSettings() {
   } = Route.useRouteContext();
   const [username, setUsername] = React.useState("opencode");
   const [password, setPassword] = React.useState("");
+  const [debugEvents, setDebugEvents] = React.useState<string[]>([
+    `${debugTime()} Settings page mounted`,
+  ]);
+
+  const logDebug = React.useCallback((message: string, data?: unknown) => {
+    const line = `${debugTime()} ${message}`;
+    setDebugEvents((events) => [line, ...events].slice(0, 30));
+    console.info(`[opencode settings] ${message}`, data ?? "");
+  }, []);
 
   const queryOptions = {
     refetchInterval: 5_000,
@@ -131,6 +155,52 @@ function TempSettings() {
   const changedFiles = fileStatus.data ?? [];
   const mcpEntries = Object.entries(mcp.data ?? {});
 
+  React.useEffect(() => {
+    if (!opencodeAuthenticated) return;
+
+    logDebug("OpenCode auth credentials are stored; SDK client was rebuilt", {
+      opencodeServerUrl,
+    });
+  }, [logDebug, opencodeAuthenticated, opencodeServerUrl]);
+
+  React.useEffect(() => {
+    if (!health.data) return;
+
+    logDebug("Health check succeeded", health.data);
+  }, [health.data, logDebug]);
+
+  React.useEffect(() => {
+    if (!health.error) return;
+
+    logDebug("Health check failed", health.error);
+  }, [health.error, logDebug]);
+
+  function handleConnect(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const nextUsername = username.trim();
+    if (!nextUsername) {
+      logDebug("Connect blocked: username is required");
+      return;
+    }
+
+    if (!password) {
+      logDebug("Connect blocked: password is required");
+      return;
+    }
+
+    logDebug("Connect clicked; storing credentials and enabling OpenCode queries", {
+      username: nextUsername,
+      opencodeServerUrl,
+    });
+    setOpencodeAuth({ username: nextUsername, password });
+  }
+
+  function handleClearCredentials() {
+    logDebug("Clearing OpenCode credentials");
+    clearOpencodeAuth();
+  }
+
   return (
     <div className="space-y-6 p-8">
       <div className="flex flex-col gap-2">
@@ -139,14 +209,16 @@ function TempSettings() {
           <span
             className={`inline-block size-2.5 rounded-full ${connected ? "bg-green-500" : "bg-red-500"}`}
           />
-          <span>{connected ? "Connected" : opencodeAuthenticated ? "Disconnected" : "Sign in required"}</span>
+          <span>
+            {connected ? "Connected" : opencodeAuthenticated ? "Disconnected" : "Sign in required"}
+          </span>
           <span>{opencodeServerUrl}</span>
           {health.data?.version && <span>v{health.data.version}</span>}
           {opencodeAuthenticated && (
             <button
               className="ml-auto rounded-md border px-3 py-1 text-xs text-foreground"
               type="button"
-              onClick={clearOpencodeAuth}
+              onClick={handleClearCredentials}
             >
               Clear credentials
             </button>
@@ -155,23 +227,19 @@ function TempSettings() {
       </div>
 
       {!opencodeAuthenticated && (
-        <form
-          className="max-w-md space-y-4 rounded-lg border p-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setOpencodeAuth({ username, password });
-          }}
-        >
+        <form className="max-w-md space-y-4 rounded-lg border p-4" onSubmit={handleConnect}>
           <div>
             <h2 className="font-semibold">Sign in to OpenCode</h2>
             <p className="text-sm text-muted-foreground">
-              Credentials are stored in this browser session and sent as Basic Auth with SDK requests.
+              Credentials are stored in this browser session and sent as Basic Auth with SDK
+              requests.
             </p>
           </div>
           <label className="block space-y-1 text-sm">
             <span className="text-muted-foreground">Username</span>
             <input
               className="w-full rounded-md border bg-background px-3 py-2 text-foreground"
+              required
               value={username}
               onChange={(event) => setUsername(event.target.value)}
             />
@@ -180,6 +248,7 @@ function TempSettings() {
             <span className="text-muted-foreground">Password</span>
             <input
               className="w-full rounded-md border bg-background px-3 py-2 text-foreground"
+              required
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -190,6 +259,20 @@ function TempSettings() {
           </button>
         </form>
       )}
+
+      <Panel title="Debug Log" loading={false} error={undefined}>
+        <KeyValue label="Authenticated" value={opencodeAuthenticated ? "yes" : "no"} />
+        <KeyValue label="Health Status" value={health.fetchStatus} />
+        <KeyValue
+          label="Health Error"
+          value={health.error ? errorMessage(health.error) : undefined}
+        />
+        <div className="mt-3 max-h-64 overflow-y-auto rounded-md border bg-muted/30 p-3 font-mono text-xs">
+          {debugEvents.map((event, index) => (
+            <div key={`${event}-${index}`}>{event}</div>
+          ))}
+        </div>
+      </Panel>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard

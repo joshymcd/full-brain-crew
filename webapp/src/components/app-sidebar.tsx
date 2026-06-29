@@ -1,5 +1,6 @@
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import type { OpencodeClient } from "@opencode-ai/sdk/v2/client";
 
 import { NavMain } from "@/components/nav-main";
@@ -44,10 +45,13 @@ function sessionDateLabel(timestamp: number) {
 }
 
 export function AppSidebar({ opencodeClient, opencodeDirectory, ...props }: AppSidebarProps) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const locationQuery = opencodeDirectory ? { directory: opencodeDirectory } : undefined;
+  const sessionsQueryKey = ["opencode", "sessions", opencodeDirectory] as const;
 
   const sessions = useQuery({
-    queryKey: ["opencode", "sessions", opencodeDirectory],
+    queryKey: sessionsQueryKey,
     queryFn: async () =>
       (
         await opencodeClient.session.list({
@@ -57,6 +61,18 @@ export function AppSidebar({ opencodeClient, opencodeDirectory, ...props }: AppS
       ).data,
     retry: false,
     refetchInterval: 5_000,
+  });
+  const createSession = useMutation({
+    mutationFn: async () => {
+      const session = (await opencodeClient.session.create({ ...locationQuery })).data;
+      if (!session) throw new Error("OpenCode did not return a new session.");
+
+      return session;
+    },
+    onSuccess: async (session) => {
+      await queryClient.invalidateQueries({ queryKey: sessionsQueryKey });
+      await navigate({ to: "/chats/$chatId", params: { chatId: session.id } });
+    },
   });
 
   const conversations = React.useMemo(() => {
@@ -126,7 +142,11 @@ export function AppSidebar({ opencodeClient, opencodeDirectory, ...props }: AppS
   return (
     <Sidebar className="top-(--header-height) h-[calc(100svh-var(--header-height))]!" {...props}>
       <SidebarContent>
-        <NavMain items={conversations} />
+        <NavMain
+          items={conversations}
+          createChatDisabled={createSession.isPending}
+          onCreateChat={() => createSession.mutate()}
+        />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

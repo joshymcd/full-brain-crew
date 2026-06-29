@@ -3,6 +3,7 @@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   SidebarGroup,
+  SidebarGroupAction,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuAction,
@@ -12,13 +13,17 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import { ChevronRightIcon } from "lucide-react";
+import { ChevronRightIcon, PlusIcon } from "lucide-react";
 
 export function NavMain({
   label = "Conversations",
   items,
+  onCreateChat,
+  createChatDisabled,
 }: {
   label?: React.ReactNode;
+  onCreateChat?: () => void;
+  createChatDisabled?: boolean;
   items: {
     id?: string;
     title: string;
@@ -35,6 +40,17 @@ export function NavMain({
   return (
     <SidebarGroup>
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      {onCreateChat ? (
+        <SidebarGroupAction
+          aria-label="Create new chat"
+          disabled={createChatDisabled}
+          title="Create new chat"
+          type="button"
+          onClick={onCreateChat}
+        >
+          <PlusIcon />
+        </SidebarGroupAction>
+      ) : null}
       <SidebarMenu>
         {items.map((item) => (
           <Collapsible key={item.id ?? item.title} asChild defaultOpen={item.isActive}>
