@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import DOMPurify from "dompurify";
+import { marked } from "marked";
 import * as React from "react";
 import type {
   AssistantMessage,
@@ -479,11 +481,7 @@ function ChatMessage({ row, showHeader = true }: { row: MessageRow; showHeader?:
         {row.content.length ? (
           <Bubble align={align} className="max-w-[78%]" variant={bubbleVariant}>
             <BubbleContent className="flex flex-col gap-2 border-border bg-card shadow-sm group-data-[align=end]/bubble:bg-primary group-data-[align=end]/bubble:text-primary-foreground">
-              <div className="flex flex-col gap-2">
-                {row.content.map((paragraph, index) => (
-                  <p key={`${row.id}-text-${index}`}>{paragraph}</p>
-                ))}
-              </div>
+              <MarkdownContent markdown={row.content.join("\n\n")} />
             </BubbleContent>
           </Bubble>
         ) : null}
@@ -491,6 +489,27 @@ function ChatMessage({ row, showHeader = true }: { row: MessageRow; showHeader?:
       </MessageContent>
     </Message>
   );
+}
+
+function MarkdownContent({ markdown }: { markdown: string }) {
+  const html = React.useMemo(() => renderMarkdown(markdown), [markdown]);
+
+  return (
+    <div
+      className="flex flex-col gap-2 [&_a]:underline [&_a]:underline-offset-2 [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_code]:rounded-sm [&_code]:bg-foreground/10 [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.85em] [&_li]:ml-4 [&_ol]:list-decimal [&_p]:m-0 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-foreground/10 [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_strong]:font-semibold [&_ul]:list-disc"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+function renderMarkdown(markdown: string) {
+  const html = marked.parse(markdown, {
+    async: false,
+    breaks: true,
+    gfm: true,
+  });
+
+  return DOMPurify.sanitize(html);
 }
 
 function PartStrip({ align, parts }: { align: "start" | "end"; parts: PartDisplay[] }) {
