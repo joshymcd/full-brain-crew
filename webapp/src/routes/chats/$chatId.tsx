@@ -1,17 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import * as React from "react";
 import type {
   AssistantMessage,
+  FilePart,
   Message as OpenCodeMessage,
   Part,
+  PatchPart,
+  ToolPart,
 } from "@opencode-ai/sdk/v2/client";
 import {
+  ArchiveIcon,
+  BotIcon,
   BrainIcon,
-  ChevronDownIcon,
+  FileCodeIcon,
+  FileTextIcon,
+  GitPullRequestIcon,
+  ListTodoIcon,
+  MinimizeIcon,
   PaperclipIcon,
+  RefreshCwIcon,
   SendIcon,
   TerminalIcon,
   WrenchIcon,
+  type LucideIcon,
 } from "lucide-react";
 
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
@@ -40,9 +52,19 @@ type MessageRow = {
   sender: string;
   time: string;
   content: string[];
-  reasoning?: string[];
+  parts?: PartDisplay[];
   markers?: MarkerRow[];
   error?: string;
+};
+
+type PartDisplay = {
+  id: string;
+  type: Exclude<Part["type"], "text" | "step-start" | "step-finish">;
+  label: string;
+  description: string;
+  detail: React.ReactNode;
+  icon: LucideIcon;
+  tone: "brain" | "tool" | "file" | "patch" | "subtask" | "muted" | "error";
 };
 
 type MarkerRow = {
@@ -50,7 +72,7 @@ type MarkerRow = {
   type: "marker";
   variant?: "default" | "border" | "separator";
   content: string;
-  icon?: typeof TerminalIcon;
+  icon?: LucideIcon;
   status?: boolean;
 };
 
@@ -216,8 +238,8 @@ function ChatMessage({ row, showHeader = true }: { row: MessageRow; showHeader?:
   const bubbleVariant = row.error ? "destructive" : row.role === "user" ? "default" : "secondary";
 
   return (
-    <Message align={align}>
-      <MessageContent>
+    <Message align={align} className="gap-0">
+      <MessageContent className="gap-1.5">
         {showHeader ? (
           <MessageHeader>{row.time ? `${row.sender} · ${row.time}` : row.sender}</MessageHeader>
         ) : null}
@@ -225,13 +247,13 @@ function ChatMessage({ row, showHeader = true }: { row: MessageRow; showHeader?:
           <ChatMarker key={marker.id} row={marker} />
         ))}
         {row.error ? (
-          <Bubble align={align} variant="destructive">
+          <Bubble align={align} className="max-w-[78%]" variant="destructive">
             <BubbleContent>{row.error}</BubbleContent>
           </Bubble>
         ) : null}
         {row.content.length ? (
-          <Bubble align={align} variant={bubbleVariant}>
-            <BubbleContent className="flex flex-col gap-2">
+          <Bubble align={align} className="max-w-[78%]" variant={bubbleVariant}>
+            <BubbleContent className="flex flex-col gap-2 border-border bg-card shadow-sm group-data-[align=end]/bubble:bg-primary group-data-[align=end]/bubble:text-primary-foreground">
               <div className="flex flex-col gap-2">
                 {row.content.map((paragraph, index) => (
                   <p key={`${row.id}-text-${index}`}>{paragraph}</p>
@@ -240,32 +262,76 @@ function ChatMessage({ row, showHeader = true }: { row: MessageRow; showHeader?:
             </BubbleContent>
           </Bubble>
         ) : null}
-        {row.reasoning?.length ? <ReasoningDisclosure reasoning={row.reasoning} /> : null}
+        {row.parts?.length ? <PartStrip align={align} parts={row.parts} /> : null}
       </MessageContent>
     </Message>
   );
 }
 
-function ReasoningDisclosure({ reasoning }: { reasoning: string[] }) {
+function PartStrip({ align, parts }: { align: "start" | "end"; parts: PartDisplay[] }) {
+  const [selectedId, setSelectedId] = React.useState<string | undefined>();
+  const selected = parts.find((part) => part.id === selectedId);
+
   return (
-    <Collapsible>
-      <Bubble variant="ghost">
-        <BubbleContent className="flex flex-col gap-2 text-muted-foreground">
-          <CollapsibleTrigger asChild>
-            <Button aria-label="Toggle reasoning" size="icon-xs" variant="ghost">
-              <BrainIcon />
-              <ChevronDownIcon data-icon="inline-end" />
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="flex flex-col gap-2">
-            {reasoning.map((item, index) => (
-              <p key={`reasoning-${index}`}>{item}</p>
-            ))}
-          </CollapsibleContent>
-        </BubbleContent>
-      </Bubble>
+    <Collapsible open={Boolean(selected)}>
+      <div className={`flex gap-1.5 ${align === "end" ? "justify-end" : "justify-start"}`}>
+        {parts.map((part) => {
+          const Icon = part.icon;
+          const selectedPart = selectedId === part.id;
+
+          return (
+            <CollapsibleTrigger key={part.id} asChild>
+              <Button
+                aria-label={`${selectedPart ? "Hide" : "Show"} ${part.label}`}
+                className={partToneClass(part.tone, selectedPart)}
+                size="icon-xs"
+                title={part.label}
+                variant="ghost"
+                onClick={() => setSelectedId(selectedPart ? undefined : part.id)}
+              >
+                <Icon />
+              </Button>
+            </CollapsibleTrigger>
+          );
+        })}
+      </div>
+      <CollapsibleContent>
+        {selected ? <PartDetails align={align} part={selected} /> : null}
+      </CollapsibleContent>
     </Collapsible>
   );
+}
+
+function PartDetails({ align, part }: { align: "start" | "end"; part: PartDisplay }) {
+  const Icon = part.icon;
+
+  return (
+    <Bubble align={align} variant="outline">
+      <BubbleContent className="flex flex-col gap-2 text-sm">
+        <div className="flex items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          <Icon />
+          <span>{part.label}</span>
+        </div>
+        <p className="text-muted-foreground">{part.description}</p>
+        <div className="flex flex-col gap-2">{part.detail}</div>
+      </BubbleContent>
+    </Bubble>
+  );
+}
+
+function partToneClass(tone: PartDisplay["tone"], selected: boolean) {
+  const selectedClass = selected ? "ring-2 ring-ring" : "";
+  const toneClass = {
+    brain: "bg-purple-500/15 text-purple-700 hover:bg-purple-500/25",
+    tool: "bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25",
+    file: "bg-cyan-500/15 text-cyan-700 hover:bg-cyan-500/25",
+    patch: "bg-pink-500/15 text-pink-700 hover:bg-pink-500/25",
+    subtask: "bg-blue-500/15 text-blue-700 hover:bg-blue-500/25",
+    muted: "bg-muted text-muted-foreground hover:bg-muted/80",
+    error: "bg-destructive/15 text-destructive hover:bg-destructive/25",
+  }[tone];
+
+  return `${toneClass} ${selectedClass}`;
 }
 
 function mapOpenCodeChatLog(entries: ChatLogEntry[]): ChatRow[] {
@@ -279,7 +345,7 @@ function mapOpenCodeChatLog(entries: ChatLogEntry[]): ChatRow[] {
       sender: role === "user" ? "You" : "OpenCode",
       time: formatTime(info.time.created),
       content: [],
-      reasoning: [],
+      parts: [],
       markers: [],
     };
 
@@ -301,17 +367,25 @@ function mapOpenCodeChatLog(entries: ChatLogEntry[]): ChatRow[] {
           break;
         case "reasoning":
           if (part.text.trim()) {
-            row.reasoning?.push(part.text);
+            row.parts?.push({
+              id,
+              type: "reasoning",
+              label: "Reasoning",
+              description: "Assistant reasoning for this step.",
+              detail: <p>{part.text}</p>,
+              icon: BrainIcon,
+              tone: "brain",
+            });
           }
           break;
         case "file":
-          // Hidden for now to keep the transcript focused on conversation text.
+          row.parts?.push(filePartToDisplay(part));
           break;
         case "tool":
-          // Hidden for now. Advanced mode can expose tool calls and outputs later.
+          row.parts?.push(toolPartToDisplay(part));
           break;
         case "patch":
-          // Hidden for now. Advanced mode can expose changed files later.
+          row.parts?.push(patchPartToDisplay(part));
           break;
         case "step-start":
           // Hidden for now. These are too noisy for the default chat UI.
@@ -320,24 +394,69 @@ function mapOpenCodeChatLog(entries: ChatLogEntry[]): ChatRow[] {
           // Hidden for now. These are too noisy for the default chat UI.
           break;
         case "snapshot":
-          // Hidden for now. Advanced mode can expose snapshots later.
+          row.parts?.push({
+            id,
+            type: "snapshot",
+            label: "Snapshot",
+            description: "OpenCode saved a snapshot at this point in the session.",
+            detail: <code className="text-xs wrap-break-word">{part.snapshot}</code>,
+            icon: ArchiveIcon,
+            tone: "muted",
+          });
           break;
         case "agent":
-          // Hidden for now. Message-level agent details are not useful in the clean view.
+          row.parts?.push({
+            id,
+            type: "agent",
+            label: "Agent",
+            description: `Agent: ${part.name}`,
+            detail: part.source ? <p>{part.source.value}</p> : <p>{part.name}</p>,
+            icon: BotIcon,
+            tone: "muted",
+          });
           break;
         case "retry":
-          // Hidden for now unless the final assistant message exposes an error.
+          row.parts?.push({
+            id,
+            type: "retry",
+            label: "Retry",
+            description: `Attempt ${part.attempt}`,
+            detail: <p>{part.error.data.message}</p>,
+            icon: RefreshCwIcon,
+            tone: "error",
+          });
           break;
         case "compaction":
-          // Hidden for now. Advanced mode can expose compaction boundaries later.
+          row.parts?.push({
+            id,
+            type: "compaction",
+            label: "Compaction",
+            description: part.auto
+              ? "Conversation context was compacted automatically."
+              : "Conversation context was compacted.",
+            detail: part.overflow ? (
+              <p>Compaction was triggered by context overflow.</p>
+            ) : (
+              <p>Context was summarized.</p>
+            ),
+            icon: MinimizeIcon,
+            tone: "muted",
+          });
           break;
         case "subtask":
-          row.markers?.push({
+          row.parts?.push({
             id,
-            type: "marker",
-            variant: "border",
-            content: `Subtask: ${part.description || part.prompt}`,
-            icon: TerminalIcon,
+            type: "subtask",
+            label: "Subtask",
+            description: part.description || part.prompt,
+            detail: (
+              <div className="flex flex-col gap-1">
+                <p>{part.prompt}</p>
+                <p className="text-muted-foreground">Agent: {part.agent}</p>
+              </div>
+            ),
+            icon: ListTodoIcon,
+            tone: "subtask",
           });
           break;
       }
@@ -348,7 +467,7 @@ function mapOpenCodeChatLog(entries: ChatLogEntry[]): ChatRow[] {
 }
 
 function hasVisibleContent(row: MessageRow) {
-  return Boolean(row.content.length || row.reasoning?.length || row.markers?.length || row.error);
+  return Boolean(row.content.length || row.parts?.length || row.markers?.length || row.error);
 }
 
 function formatTime(value?: number) {
@@ -367,6 +486,112 @@ function assistantErrorMessage(error: AssistantMessage["error"]): string | undef
   }
 
   return error.name;
+}
+
+function filePartToDisplay(part: FilePart): PartDisplay {
+  const name =
+    part.filename ?? fileNameFromPath(part.source?.type === "file" ? part.source.path : part.url);
+
+  return {
+    id: part.id,
+    type: "file",
+    label: "File",
+    description: name,
+    detail: (
+      <div className="flex flex-col gap-1">
+        <p>{part.mime}</p>
+        <code className="text-xs wrap-break-word">
+          {part.source?.type === "file" ? part.source.path : part.url}
+        </code>
+      </div>
+    ),
+    icon: attachmentIcon(part.mime, name),
+    tone: "file",
+  };
+}
+
+function toolPartToDisplay(part: ToolPart): PartDisplay {
+  const state = part.state;
+  const title = "title" in state && state.title ? state.title : part.tool;
+  const status = state.status;
+
+  return {
+    id: part.id,
+    type: "tool",
+    label: "Tool",
+    description: `${title} · ${status}`,
+    detail: toolDetail(part),
+    icon: status === "error" ? WrenchIcon : TerminalIcon,
+    tone: status === "error" ? "error" : "tool",
+  };
+}
+
+function toolDetail(part: ToolPart) {
+  switch (part.state.status) {
+    case "pending":
+      return <CodeBlock value={part.state.raw || summarizeUnknown(part.state.input)} />;
+    case "running":
+      return <CodeBlock value={summarizeUnknown(part.state.input)} />;
+    case "completed":
+      return <p>{summarizeText(part.state.output)}</p>;
+    case "error":
+      return <p>{part.state.error}</p>;
+  }
+}
+
+function patchPartToDisplay(part: PatchPart): PartDisplay {
+  return {
+    id: part.id,
+    type: "patch",
+    label: "Patch",
+    description: `Changed ${part.files.length} ${part.files.length === 1 ? "file" : "files"}`,
+    detail: (
+      <div className="flex flex-col gap-1">
+        {part.files.map((file) => (
+          <code key={file} className="text-xs wrap-break-word">
+            {file}
+          </code>
+        ))}
+      </div>
+    ),
+    icon: GitPullRequestIcon,
+    tone: "patch",
+  };
+}
+
+function CodeBlock({ value }: { value: string }) {
+  return <code className="text-xs wrap-break-word">{value}</code>;
+}
+
+function summarizeUnknown(value: unknown) {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function summarizeText(value: string) {
+  const compact = value.replace(/\s+/g, " ").trim();
+
+  if (!compact) return "Completed";
+  if (compact.length <= 500) return compact;
+
+  return `${compact.slice(0, 497)}...`;
+}
+
+function fileNameFromPath(value: string) {
+  const cleaned = value.split("?")[0] ?? value;
+  const parts = cleaned.split("/").filter(Boolean);
+
+  return parts.at(-1) ?? value;
+}
+
+function attachmentIcon(mime: string, name: string): LucideIcon {
+  if (mime.includes("typescript") || /\.(ts|tsx|js|jsx|json|md)$/i.test(name)) return FileCodeIcon;
+  if (mime.startsWith("text/") || /\.(txt|log)$/i.test(name)) return FileTextIcon;
+
+  return FileTextIcon;
 }
 
 function getErrorMessage(error: unknown) {
