@@ -13,6 +13,7 @@ function defaultOpencodeServerUrl() {
 }
 
 const OPENCODE_SERVER_URL = import.meta.env.VITE_OPENCODE_SERVER_URL ?? defaultOpencodeServerUrl();
+const OPENCODE_DIRECTORY = import.meta.env.VITE_OPENCODE_DIRECTORY || undefined;
 
 type OpencodeAuth = {
   username: string;
@@ -21,6 +22,7 @@ type OpencodeAuth = {
 
 export type OpencodeRouterContext = {
   opencodeClient: OpencodeClient;
+  opencodeDirectory: string | undefined;
   opencodeServerUrl: string;
   opencodeAuthenticated: boolean;
   setOpencodeAuth: (auth: OpencodeAuth) => void;
@@ -42,6 +44,7 @@ function readStoredAuth(): OpencodeAuth | undefined {
 function createClient(auth?: OpencodeAuth) {
   return createOpencodeClient({
     baseUrl: OPENCODE_SERVER_URL,
+    directory: OPENCODE_DIRECTORY,
     headers: auth
       ? {
           Authorization: `Basic ${btoa(`${auth.username}:${auth.password}`)}`,
@@ -68,6 +71,7 @@ export function useOpencodeRouterContext(): OpencodeRouterContext {
   return React.useMemo(
     () => ({
       opencodeClient,
+      opencodeDirectory: OPENCODE_DIRECTORY,
       opencodeServerUrl: OPENCODE_SERVER_URL,
       opencodeAuthenticated: auth !== undefined,
       setOpencodeAuth,

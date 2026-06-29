@@ -1,11 +1,11 @@
-import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";  
+import { Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 
-import { TooltipProvider } from "@/components/ui/tooltip"; 
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 
-import  "@/styles.css";
+import "@/styles.css";
 import Providers from "@/providers";
 import type { OpencodeRouterContext } from "@/opencode-client";
 
@@ -13,7 +13,8 @@ export const Route = createRootRouteWithContext<OpencodeRouterContext>()({
   component: RootComponent,
 });
 
-function RootComponent() {  
+function RootComponent() {
+  const { opencodeClient, opencodeDirectory } = Route.useRouteContext();
 
   return (
     <>
@@ -22,15 +23,16 @@ function RootComponent() {
           <SidebarProvider className="flex flex-col h-full">
             <SiteHeader />
             <div className="flex flex-1  ">
-              <AppSidebar />
+              <AppSidebar opencodeClient={opencodeClient} opencodeDirectory={opencodeDirectory} />
               <div className="container mx-auto bg-green-500">
-                <SidebarInset><Outlet /></SidebarInset>
+                <SidebarInset>
+                  <Outlet />
+                </SidebarInset>
               </div>
             </div>
-             
           </SidebarProvider>
         </TooltipProvider>
       </Providers>
     </>
   );
-} 
+}

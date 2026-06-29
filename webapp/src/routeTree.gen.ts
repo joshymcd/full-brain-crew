@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TempSettingsRouteImport } from './routes/temp/settings'
+import { Route as ChatsChatIdRouteImport } from './routes/chats/$chatId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,30 +23,39 @@ const TempSettingsRoute = TempSettingsRouteImport.update({
   path: '/temp/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChatsChatIdRoute = ChatsChatIdRouteImport.update({
+  id: '/chats/$chatId',
+  path: '/chats/$chatId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/chats/$chatId': typeof ChatsChatIdRoute
   '/temp/settings': typeof TempSettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/chats/$chatId': typeof ChatsChatIdRoute
   '/temp/settings': typeof TempSettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/chats/$chatId': typeof ChatsChatIdRoute
   '/temp/settings': typeof TempSettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/temp/settings'
+  fullPaths: '/' | '/chats/$chatId' | '/temp/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/temp/settings'
-  id: '__root__' | '/' | '/temp/settings'
+  to: '/' | '/chats/$chatId' | '/temp/settings'
+  id: '__root__' | '/' | '/chats/$chatId' | '/temp/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChatsChatIdRoute: typeof ChatsChatIdRoute
   TempSettingsRoute: typeof TempSettingsRoute
 }
 
@@ -65,11 +75,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TempSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chats/$chatId': {
+      id: '/chats/$chatId'
+      path: '/chats/$chatId'
+      fullPath: '/chats/$chatId'
+      preLoaderRoute: typeof ChatsChatIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChatsChatIdRoute: ChatsChatIdRoute,
   TempSettingsRoute: TempSettingsRoute,
 }
 export const routeTree = rootRouteImport
