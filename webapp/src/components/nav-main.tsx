@@ -34,6 +34,8 @@ export function NavMain({
       id?: string;
       title: string;
       url: string;
+      depth?: number;
+      label?: string;
     }[];
   }[];
 }) {
@@ -82,9 +84,19 @@ export function NavMain({
                     <SidebarMenuSub>
                       {item.items?.map((subItem) => (
                         <SidebarMenuSubItem key={subItem.id ?? subItem.url}>
-                          <SidebarMenuSubButton asChild>
+                          <SidebarMenuSubButton
+                            asChild
+                            className={subItem.depth ? "h-auto min-h-7 py-1 pl-6" : undefined}
+                          >
                             <a href={subItem.url}>
-                              <span>{subItem.title}</span>
+                              <span className="flex min-w-0 flex-col gap-0.5">
+                                <span>{subItem.title}</span>
+                                {subItem.label ? (
+                                  <span className="text-[0.65rem] tracking-wide text-muted-foreground uppercase">
+                                    {subItem.label}
+                                  </span>
+                                ) : null}
+                              </span>
                             </a>
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>

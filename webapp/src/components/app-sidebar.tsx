@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import type { OpencodeClient } from "@opencode-ai/sdk/v2/client";
+import type { OpencodeClient, Session } from "@opencode-ai/sdk/v2/client";
 
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
@@ -18,6 +18,14 @@ const data = {
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   opencodeClient: OpencodeClient;
   opencodeDirectory: string | undefined;
+};
+
+type ConversationItem = {
+  id: string;
+  title: string;
+  url: string;
+  depth?: number;
+  label?: string;
 };
 
 function sessionTitle(session: { id: string; title?: string; slug?: string }) {
@@ -42,6 +50,33 @@ function sessionDateLabel(timestamp: number) {
     day: "numeric",
     year: date.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
   }).format(date);
+}
+
+function appendSessionWithChildren({
+  childrenByParent,
+  items,
+  session,
+  visited,
+}: {
+  childrenByParent: Map<string, Session[]>;
+  items: ConversationItem[];
+  session: Session;
+  visited: Set<string>;
+}) {
+  if (visited.has(session.id)) return;
+
+  visited.add(session.id);
+  items.push({
+    id: session.id,
+    title: sessionTitle(session),
+    url: `/chats/${session.id}`,
+    depth: session.parentID ? 1 : undefined,
+    label: session.parentID ? `Sub-session · #${session.slug}` : undefined,
+  });
+
+  for (const child of childrenByParent.get(session.id) ?? []) {
+    appendSessionWithChildren({ childrenByParent, items, session: child, visited });
+  }
 }
 
 export function AppSidebar({ opencodeClient, opencodeDirectory, ...props }: AppSidebarProps) {
@@ -114,17 +149,29 @@ export function AppSidebar({ opencodeClient, opencodeDirectory, ...props }: AppS
       ];
     }
 
-    const groups = new Map<string, { id: string; title: string; url: string }[]>();
+    const sortedSessions = [...sessions.data].sort((a, b) => b.time.updated - a.time.updated);
+    const sessionIDs = new Set(sortedSessions.map((session) => session.id));
+    const childrenByParent = new Map<string, Session[]>();
+    const rootSessions: Session[] = [];
 
-    for (const session of [...sessions.data].sort((a, b) => b.time.updated - a.time.updated)) {
+    for (const session of sortedSessions) {
+      if (session.parentID && sessionIDs.has(session.parentID)) {
+        const children = childrenByParent.get(session.parentID) ?? [];
+        children.push(session);
+        childrenByParent.set(session.parentID, children);
+      } else {
+        rootSessions.push(session);
+      }
+    }
+
+    const groups = new Map<string, ConversationItem[]>();
+    const visited = new Set<string>();
+
+    for (const session of rootSessions) {
       const label = sessionDateLabel(session.time.updated);
       const group = groups.get(label) ?? [];
 
-      group.push({
-        id: session.id,
-        title: sessionTitle(session),
-        url: `/chats/${session.id}`,
-      });
+      appendSessionWithChildren({ childrenByParent, items: group, session, visited });
       groups.set(label, group);
     }
 
