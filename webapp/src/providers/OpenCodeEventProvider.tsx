@@ -107,6 +107,10 @@ export function OpenCodeEventProvider({ children, opencode }: OpenCodeEventProvi
           if (sessionID && shouldRefreshChat(event)) {
             invalidateSoon(["opencode", "chat-log", opencode.opencodeDirectory, sessionID]);
           }
+
+          if (sessionID && shouldRefreshSessions(event)) {
+            invalidateSoon(["opencode", "session", opencode.opencodeDirectory, sessionID]);
+          }
         }
       } catch (error) {
         if (!cancelled) {

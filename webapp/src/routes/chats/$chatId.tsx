@@ -5,20 +5,24 @@ import type {
   AssistantMessage,
   FilePart,
   Message as OpenCodeMessage,
+  Model,
   Part,
   PatchPart,
+  Provider,
+  Session,
   ToolPart,
 } from "@opencode-ai/sdk/v2/client";
 import {
   ArchiveIcon,
   BotIcon,
   BrainIcon,
+  CheckIcon,
+  ChevronDownIcon,
   FileCodeIcon,
   FileTextIcon,
   GitPullRequestIcon,
   ListTodoIcon,
   MinimizeIcon,
-  PaperclipIcon,
   RefreshCwIcon,
   SendIcon,
   TerminalIcon,
@@ -29,6 +33,17 @@ import {
 import { Bubble, BubbleContent } from "@/components/ui/bubble";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Marker, MarkerContent, MarkerIcon } from "@/components/ui/marker";
 import { Message, MessageContent, MessageHeader } from "@/components/ui/message";
@@ -83,13 +98,43 @@ type ChatLogEntry = {
   parts: Part[];
 };
 
+type SelectedModel = {
+  providerID: string;
+  modelID: string;
+};
+
+type ModelOption = {
+  id: string;
+  providerID: string;
+  providerName: string;
+  model: Model;
+};
+
 function ChatPage() {
   const { chatId } = Route.useParams();
   const { opencodeClient, opencodeDirectory } = Route.useRouteContext();
   const queryClient = useQueryClient();
   const [messageText, setMessageText] = React.useState("");
+  const [selectedModel, setSelectedModel] = React.useState<SelectedModel>();
   const locationQuery = opencodeDirectory ? { directory: opencodeDirectory } : undefined;
+  const sessionQueryKey = ["opencode", "session", opencodeDirectory, chatId] as const;
   const chatLogQueryKey = ["opencode", "chat-log", opencodeDirectory, chatId] as const;
+  const sessionQuery = useQuery({
+    queryKey: sessionQueryKey,
+    queryFn: async () =>
+      (
+        await opencodeClient.session.get({
+          ...locationQuery,
+          sessionID: chatId,
+        })
+      ).data,
+    retry: false,
+  });
+  const providersQuery = useQuery({
+    queryKey: ["opencode", "providers", opencodeDirectory],
+    queryFn: async () => (await opencodeClient.provider.list({ ...locationQuery })).data,
+    retry: false,
+  });
   const chatLogQuery = useQuery({
     queryKey: chatLogQueryKey,
     queryFn: async () =>
@@ -107,16 +152,32 @@ function ChatPage() {
         await opencodeClient.session.prompt({
           ...locationQuery,
           sessionID: chatId,
+          ...(selectedModel ? { model: selectedModel } : {}),
           parts: [{ type: "text", text }],
         })
       ).data,
     onSuccess: async () => {
       setMessageText("");
       await queryClient.invalidateQueries({ queryKey: chatLogQueryKey });
+      await queryClient.invalidateQueries({ queryKey: sessionQueryKey });
     },
   });
+  const modelOptions = React.useMemo(
+    () => mapModelOptions(providersQuery.data),
+    [providersQuery.data],
+  );
+  const currentModel = selectedModel ?? modelFromSession(sessionQuery.data);
+  const currentModelOption = currentModel ? findModelOption(modelOptions, currentModel) : undefined;
+  const currentModelLabel =
+    currentModelOption?.model.name ?? currentModel?.modelID ?? "Select model";
   const chatRows = mapOpenCodeChatLog(chatLogQuery.data ?? []);
   const canSend = messageText.trim().length > 0 && !sendMessage.isPending;
+
+  React.useEffect(() => {
+    if (selectedModel || !sessionQuery.data?.model) return;
+
+    setSelectedModel(modelFromSession(sessionQuery.data));
+  }, [selectedModel, sessionQuery.data]);
 
   function handleSendMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -132,14 +193,20 @@ function ChatPage() {
       <header className="flex shrink-0 items-center justify-between gap-4 border-b bg-card px-6 py-4">
         <div className="flex min-w-0 flex-col gap-1">
           <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            OpenCode session
+            {sessionQuery.data?.slug ? `#${sessionQuery.data.slug}` : "#loading-session"}
           </p>
-          <h1 className="truncate text-2xl font-semibold tracking-tight">Chat {chatId}</h1>
+          <h1 className="truncate text-xl font-semibold tracking-tight">
+            {sessionQuery.data ? sessionTitle(sessionQuery.data) : "Loading conversation"}
+          </h1>
         </div>
-        <div className="hidden items-center gap-2 text-xs font-medium tracking-wide text-muted-foreground uppercase sm:flex">
-          <PaperclipIcon />
-          Live chat log
-        </div>
+        <ModelPicker
+          currentModel={currentModel}
+          currentModelLabel={currentModelLabel}
+          disabled={providersQuery.isLoading || sendMessage.isPending}
+          error={providersQuery.error}
+          modelOptions={modelOptions}
+          onSelectModel={setSelectedModel}
+        />
       </header>
 
       <MessageScrollerProvider
@@ -235,6 +302,127 @@ function ChatPage() {
         ) : null}
       </footer>
     </div>
+  );
+}
+
+function sessionTitle(session: Session) {
+  return session.title || session.slug || session.id;
+}
+
+function modelFromSession(session?: Session): SelectedModel | undefined {
+  if (!session?.model) return undefined;
+
+  return {
+    providerID: session.model.providerID,
+    modelID: session.model.id,
+  };
+}
+
+function modelValue(model: SelectedModel) {
+  return `${model.providerID}:${model.modelID}`;
+}
+
+function findModelOption(options: ModelOption[], model: SelectedModel) {
+  return options.find(
+    (option) => option.providerID === model.providerID && option.model.id === model.modelID,
+  );
+}
+
+function mapModelOptions(data?: { all: Provider[]; connected: string[] }) {
+  if (!data) return [];
+
+  const connected = new Set(data.connected);
+  const providers = data.connected.length
+    ? data.all.filter((provider) => connected.has(provider.id))
+    : data.all;
+
+  return providers.flatMap((provider) =>
+    Object.values(provider.models)
+      .filter((model) => model.status !== "deprecated")
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((model) => ({
+        id: modelValue({ providerID: provider.id, modelID: model.id }),
+        providerID: provider.id,
+        providerName: provider.name,
+        model,
+      })),
+  );
+}
+
+function groupModelOptions(options: ModelOption[]) {
+  const groups = new Map<string, ModelOption[]>();
+
+  for (const option of options) {
+    const group = groups.get(option.providerName) ?? [];
+    group.push(option);
+    groups.set(option.providerName, group);
+  }
+
+  return Array.from(groups, ([providerName, models]) => ({ providerName, models })).sort((a, b) =>
+    a.providerName.localeCompare(b.providerName),
+  );
+}
+
+function ModelPicker({
+  currentModel,
+  currentModelLabel,
+  disabled,
+  error,
+  modelOptions,
+  onSelectModel,
+}: {
+  currentModel: SelectedModel | undefined;
+  currentModelLabel: string;
+  disabled: boolean;
+  error: unknown;
+  modelOptions: ModelOption[];
+  onSelectModel: (model: SelectedModel) => void;
+}) {
+  const groups = groupModelOptions(modelOptions);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button className="max-w-72 justify-between" disabled={disabled} variant="outline">
+          <span className="truncate">{error ? "Models unavailable" : currentModelLabel}</span>
+          <ChevronDownIcon data-icon="inline-end" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuLabel>Model</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {groups.length ? (
+          groups.map((group) => (
+            <DropdownMenuSub key={group.providerName}>
+              <DropdownMenuSubTrigger>{group.providerName}</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="max-h-96 w-80 overflow-y-auto">
+                {group.models.map((option) => {
+                  const selected = currentModel && option.id === modelValue(currentModel);
+
+                  return (
+                    <DropdownMenuItem
+                      key={option.id}
+                      className="justify-between"
+                      onSelect={() =>
+                        onSelectModel({
+                          providerID: option.providerID,
+                          modelID: option.model.id,
+                        })
+                      }
+                    >
+                      <span className="truncate">{option.model.name}</span>
+                      {selected ? <CheckIcon /> : null}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          ))
+        ) : (
+          <DropdownMenuItem disabled>No models available</DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
