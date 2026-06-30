@@ -186,7 +186,7 @@ export function AppSidebar({ opencodeClient, opencodeDirectory, ...props }: AppS
   }, [sessions.data, sessions.error, sessions.isLoading]);
 
   return (
-    <Sidebar className="top-(--header-height) h-[calc(100svh-var(--header-height))]!" {...props}>
+    <Sidebar className="top-(--header-height) h-[calc(100dvh-var(--header-height))]!" {...props}>
       <SidebarContent>
         <NavMain
           items={conversations}
