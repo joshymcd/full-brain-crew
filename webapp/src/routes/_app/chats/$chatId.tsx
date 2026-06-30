@@ -41,9 +41,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -385,40 +382,47 @@ function ModelPicker({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="max-w-72 justify-between" disabled={disabled} variant="outline">
+        <Button
+          className="w-full justify-between sm:max-w-72"
+          disabled={disabled}
+          variant="outline"
+        >
           <span className="truncate">{error ? "Models unavailable" : currentModelLabel}</span>
           <ChevronDownIcon data-icon="inline-end" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent
+        align="end"
+        collisionPadding={8}
+        className="max-h-[min(28rem,var(--radix-dropdown-menu-content-available-height))] w-[min(20rem,calc(100vw-1rem))]"
+      >
         <DropdownMenuLabel>Model</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {groups.length ? (
-          groups.map((group) => (
-            <DropdownMenuSub key={group.providerName}>
-              <DropdownMenuSubTrigger>{group.providerName}</DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="max-h-96 w-80 overflow-y-auto">
-                {group.models.map((option) => {
-                  const selected = currentModel && option.id === modelValue(currentModel);
+          groups.map((group, groupIndex) => (
+            <React.Fragment key={group.providerName}>
+              {groupIndex > 0 ? <DropdownMenuSeparator /> : null}
+              <DropdownMenuLabel>{group.providerName}</DropdownMenuLabel>
+              {group.models.map((option) => {
+                const selected = currentModel && option.id === modelValue(currentModel);
 
-                  return (
-                    <DropdownMenuItem
-                      key={option.id}
-                      className="justify-between"
-                      onSelect={() =>
-                        onSelectModel({
-                          providerID: option.providerID,
-                          modelID: option.model.id,
-                        })
-                      }
-                    >
-                      <span className="truncate">{option.model.name}</span>
-                      {selected ? <CheckIcon /> : null}
-                    </DropdownMenuItem>
-                  );
-                })}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+                return (
+                  <DropdownMenuItem
+                    key={option.id}
+                    className="justify-between"
+                    onSelect={() =>
+                      onSelectModel({
+                        providerID: option.providerID,
+                        modelID: option.model.id,
+                      })
+                    }
+                  >
+                    <span className="truncate">{option.model.name}</span>
+                    {selected ? <CheckIcon /> : null}
+                  </DropdownMenuItem>
+                );
+              })}
+            </React.Fragment>
           ))
         ) : (
           <DropdownMenuItem disabled>No models available</DropdownMenuItem>
