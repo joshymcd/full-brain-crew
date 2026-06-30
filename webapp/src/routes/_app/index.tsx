@@ -4,7 +4,7 @@ import { MessageSquarePlusIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-export const Route = createFileRoute("/")({ component: Home });
+export const Route = createFileRoute("/_app/")({ component: Home });
 
 function Home() {
   const navigate = Route.useNavigate();

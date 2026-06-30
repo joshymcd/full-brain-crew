@@ -9,86 +9,161 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as TempSettingsRouteImport } from './routes/temp/settings'
-import { Route as ChatsChatIdRouteImport } from './routes/chats/$chatId'
+import { Route as AuthRouteRouteImport } from './routes/_auth/route'
+import { Route as AppRouteRouteImport } from './routes/_app/route'
+import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as AppTempSettingsRouteImport } from './routes/_app/temp/settings'
+import { Route as AppChatsChatIdRouteImport } from './routes/_app/chats/$chatId'
 
-const IndexRoute = IndexRouteImport.update({
+const AuthRouteRoute = AuthRouteRouteImport.update({
+  id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRouteRoute = AppRouteRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRouteRoute,
 } as any)
-const TempSettingsRoute = TempSettingsRouteImport.update({
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
+const AppTempSettingsRoute = AppTempSettingsRouteImport.update({
   id: '/temp/settings',
   path: '/temp/settings',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRouteRoute,
 } as any)
-const ChatsChatIdRoute = ChatsChatIdRouteImport.update({
+const AppChatsChatIdRoute = AppChatsChatIdRouteImport.update({
   id: '/chats/$chatId',
   path: '/chats/$chatId',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/chats/$chatId': typeof ChatsChatIdRoute
-  '/temp/settings': typeof TempSettingsRoute
+  '/': typeof AppIndexRoute
+  '/login': typeof AuthLoginRoute
+  '/chats/$chatId': typeof AppChatsChatIdRoute
+  '/temp/settings': typeof AppTempSettingsRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/chats/$chatId': typeof ChatsChatIdRoute
-  '/temp/settings': typeof TempSettingsRoute
+  '/': typeof AppIndexRoute
+  '/login': typeof AuthLoginRoute
+  '/chats/$chatId': typeof AppChatsChatIdRoute
+  '/temp/settings': typeof AppTempSettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/chats/$chatId': typeof ChatsChatIdRoute
-  '/temp/settings': typeof TempSettingsRoute
+  '/_app': typeof AppRouteRouteWithChildren
+  '/_auth': typeof AuthRouteRouteWithChildren
+  '/_auth/login': typeof AuthLoginRoute
+  '/_app/': typeof AppIndexRoute
+  '/_app/chats/$chatId': typeof AppChatsChatIdRoute
+  '/_app/temp/settings': typeof AppTempSettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chats/$chatId' | '/temp/settings'
+  fullPaths: '/' | '/login' | '/chats/$chatId' | '/temp/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/chats/$chatId' | '/temp/settings'
-  id: '__root__' | '/' | '/chats/$chatId' | '/temp/settings'
+  to: '/' | '/login' | '/chats/$chatId' | '/temp/settings'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/_auth'
+    | '/_auth/login'
+    | '/_app/'
+    | '/_app/chats/$chatId'
+    | '/_app/temp/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  ChatsChatIdRoute: typeof ChatsChatIdRoute
-  TempSettingsRoute: typeof TempSettingsRoute
+  AppRouteRoute: typeof AppRouteRouteWithChildren
+  AuthRouteRoute: typeof AuthRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRouteRoute
     }
-    '/temp/settings': {
-      id: '/temp/settings'
+    '/_auth/login': {
+      id: '/_auth/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
+    '/_app/temp/settings': {
+      id: '/_app/temp/settings'
       path: '/temp/settings'
       fullPath: '/temp/settings'
-      preLoaderRoute: typeof TempSettingsRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppTempSettingsRouteImport
+      parentRoute: typeof AppRouteRoute
     }
-    '/chats/$chatId': {
-      id: '/chats/$chatId'
+    '/_app/chats/$chatId': {
+      id: '/_app/chats/$chatId'
       path: '/chats/$chatId'
       fullPath: '/chats/$chatId'
-      preLoaderRoute: typeof ChatsChatIdRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppChatsChatIdRouteImport
+      parentRoute: typeof AppRouteRoute
     }
   }
 }
 
+interface AppRouteRouteChildren {
+  AppIndexRoute: typeof AppIndexRoute
+  AppChatsChatIdRoute: typeof AppChatsChatIdRoute
+  AppTempSettingsRoute: typeof AppTempSettingsRoute
+}
+
+const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppIndexRoute: AppIndexRoute,
+  AppChatsChatIdRoute: AppChatsChatIdRoute,
+  AppTempSettingsRoute: AppTempSettingsRoute,
+}
+
+const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
+  AppRouteRouteChildren,
+)
+
+interface AuthRouteRouteChildren {
+  AuthLoginRoute: typeof AuthLoginRoute
+}
+
+const AuthRouteRouteChildren: AuthRouteRouteChildren = {
+  AuthLoginRoute: AuthLoginRoute,
+}
+
+const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
+  AuthRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  ChatsChatIdRoute: ChatsChatIdRoute,
-  TempSettingsRoute: TempSettingsRoute,
+  AppRouteRoute: AppRouteRouteWithChildren,
+  AuthRouteRoute: AuthRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

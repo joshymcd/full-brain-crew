@@ -1,4 +1,6 @@
 import { createOpencodeClient, type OpencodeClient } from "@opencode-ai/sdk/v2/client";
+import { useAtom } from "jotai";
+import { RESET, atomWithStorage, createJSONStorage } from "jotai/utils";
 import * as React from "react";
 
 const OPENCODE_AUTH_STORAGE_KEY = "opencode-basic-auth";
@@ -15,7 +17,7 @@ function defaultOpencodeServerUrl() {
 const OPENCODE_SERVER_URL = import.meta.env.VITE_OPENCODE_SERVER_URL ?? defaultOpencodeServerUrl();
 const OPENCODE_DIRECTORY = import.meta.env.VITE_OPENCODE_DIRECTORY || undefined;
 
-type OpencodeAuth = {
+export type OpencodeAuth = {
   username: string;
   password: string;
 };
@@ -29,17 +31,11 @@ export type OpencodeRouterContext = {
   clearOpencodeAuth: () => void;
 };
 
-function readStoredAuth(): OpencodeAuth | undefined {
-  const stored = window.sessionStorage.getItem(OPENCODE_AUTH_STORAGE_KEY);
-  if (!stored) return undefined;
-
-  try {
-    return JSON.parse(stored) as OpencodeAuth;
-  } catch {
-    window.sessionStorage.removeItem(OPENCODE_AUTH_STORAGE_KEY);
-    return undefined;
-  }
-}
+export const opencodeAuthAtom = atomWithStorage<OpencodeAuth | undefined>(
+  OPENCODE_AUTH_STORAGE_KEY,
+  undefined,
+  createJSONStorage(() => window.sessionStorage),
+);
 
 function createClient(auth?: OpencodeAuth) {
   return createOpencodeClient({
@@ -54,19 +50,20 @@ function createClient(auth?: OpencodeAuth) {
 }
 
 export function useOpencodeRouterContext(): OpencodeRouterContext {
-  const [auth, setAuth] = React.useState<OpencodeAuth | undefined>(() => readStoredAuth());
+  const [auth, setAuth] = useAtom(opencodeAuthAtom);
 
   const opencodeClient = React.useMemo(() => createClient(auth), [auth]);
 
-  const setOpencodeAuth = React.useCallback((nextAuth: OpencodeAuth) => {
-    window.sessionStorage.setItem(OPENCODE_AUTH_STORAGE_KEY, JSON.stringify(nextAuth));
-    setAuth(nextAuth);
-  }, []);
+  const setOpencodeAuth = React.useCallback(
+    (nextAuth: OpencodeAuth) => {
+      setAuth(nextAuth);
+    },
+    [setAuth],
+  );
 
   const clearOpencodeAuth = React.useCallback(() => {
-    window.sessionStorage.removeItem(OPENCODE_AUTH_STORAGE_KEY);
-    setAuth(undefined);
-  }, []);
+    setAuth(RESET);
+  }, [setAuth]);
 
   return React.useMemo(
     () => ({

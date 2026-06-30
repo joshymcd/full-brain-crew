@@ -58,7 +58,7 @@ import {
   MessageScrollerViewport,
 } from "@/components/ui/message-scroller";
 
-export const Route = createFileRoute("/chats/$chatId")({
+export const Route = createFileRoute("/_app/chats/$chatId")({
   component: ChatPage,
 });
 

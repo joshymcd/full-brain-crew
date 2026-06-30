@@ -3,18 +3,6 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import type { Event as OpenCodeEvent, Session } from "@opencode-ai/sdk/v2/client";
 import * as React from "react";
 import { toast } from "sonner";
-
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import type { OpencodeRouterContext } from "@/opencode-client";
 
 type OpenCodeEventProviderProps = {
@@ -69,9 +57,6 @@ export function OpenCodeEventProvider({ children, opencode }: OpenCodeEventProvi
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const [username, setUsername] = React.useState("opencode");
-  const [password, setPassword] = React.useState("");
-  const [authError, setAuthError] = React.useState<string>();
   const pendingInvalidations = React.useRef(new Map<string, number>());
   const shownChildSessionToasts = React.useRef(new Set<string>());
   const currentChatID = chatIDFromPathname(location.pathname);
@@ -164,64 +149,6 @@ export function OpenCodeEventProvider({ children, opencode }: OpenCodeEventProvi
       abortController.abort();
     };
   }, [currentChatID, invalidateSoon, navigate, opencode]);
-
-  function handleLogin(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const nextUsername = username.trim();
-    if (!nextUsername || !password) {
-      setAuthError("Enter your OpenCode username and password.");
-      return;
-    }
-
-    setAuthError(undefined);
-    opencode.setOpencodeAuth({ username: nextUsername, password });
-  }
-
-  if (!opencode.opencodeAuthenticated) {
-    return (
-      <Dialog open>
-        <DialogContent showCloseButton={false}>
-          <form className="flex flex-col gap-6" onSubmit={handleLogin}>
-            <DialogHeader>
-              <DialogTitle>Sign In To OpenCode</DialogTitle>
-              <DialogDescription>
-                OpenCode credentials are required before using this app. They are stored in this
-                browser session and sent as Basic Auth with SDK requests.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="opencode-username">Username</Label>
-                <Input
-                  id="opencode-username"
-                  autoComplete="username"
-                  required
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="opencode-password">Password</Label>
-                <Input
-                  id="opencode-password"
-                  autoComplete="current-password"
-                  required
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-              </div>
-              {authError ? <p className="text-sm text-destructive">{authError}</p> : null}
-            </div>
-            <DialogFooter>
-              <Button type="submit">Sign in</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   return <>{children}</>;
 }

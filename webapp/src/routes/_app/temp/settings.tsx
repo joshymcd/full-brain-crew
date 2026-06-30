@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import * as React from "react";
 import type { ReactNode } from "react";
 
-export const Route = createFileRoute("/temp/settings")({ component: TempSettings });
+export const Route = createFileRoute("/_app/temp/settings")({ component: TempSettings });
 
 function formatTime(value?: number) {
   if (!value) return "-";
