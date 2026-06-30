@@ -27,12 +27,12 @@ function AppLayout() {
   return (
     <OpenCodeEventProvider opencode={opencode}>
       <TooltipProvider>
-        <SidebarProvider className="flex h-full flex-col">
+        <SidebarProvider className="flex h-dvh min-h-0 flex-col overflow-hidden">
           <SiteHeader />
-          <div className="flex flex-1">
+          <div className="flex min-h-0 flex-1 overflow-hidden">
             <AppSidebar opencodeClient={opencodeClient} opencodeDirectory={opencodeDirectory} />
-            <div className="container mx-auto">
-              <SidebarInset>
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <SidebarInset className="h-full min-h-0 overflow-hidden">
                 <Outlet />
               </SidebarInset>
             </div>

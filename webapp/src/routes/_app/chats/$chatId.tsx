@@ -191,8 +191,8 @@ function ChatPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-var(--header-height))] min-h-0 flex-col bg-background text-foreground">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b bg-card px-6 py-4">
+    <div className="flex h-full min-h-0 flex-col bg-background text-foreground">
+      <header className="flex shrink-0 flex-col gap-3 border-b bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
         <div className="flex min-w-0 flex-col gap-1">
           <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
             {sessionQuery.data?.slug ? `#${sessionQuery.data.slug}` : "#loading-session"}
@@ -216,7 +216,7 @@ function ChatPage() {
         defaultScrollPosition="last-anchor"
         scrollPreviousItemPeek={72}
       >
-        <MessageScroller className="flex-1 bg-background">
+        <MessageScroller className="min-h-0 flex-1 bg-background">
           <MessageScrollerViewport>
             <MessageScrollerContent className="mx-auto w-full max-w-4xl gap-3 px-4 py-6 sm:px-6 lg:px-8">
               {chatLogQuery.isLoading ? (
@@ -280,9 +280,9 @@ function ChatPage() {
         </MessageScroller>
       </MessageScrollerProvider>
 
-      <footer className="shrink-0 border-t bg-card px-4 py-4 sm:px-6">
+      <footer className="shrink-0 border-t bg-card px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:px-6 sm:pt-4 sm:pb-[calc(env(safe-area-inset-bottom)+1rem)]">
         <form
-          className="mx-auto flex w-full max-w-4xl items-center gap-2"
+          className="mx-auto grid w-full max-w-4xl grid-cols-[minmax(0,1fr)_auto] items-center gap-2"
           onSubmit={handleSendMessage}
         >
           <Input
@@ -293,7 +293,7 @@ function ChatPage() {
             onChange={(event) => setMessageText(event.target.value)}
           />
           <Button disabled={!canSend} type="submit" aria-label="Send message">
-            {sendMessage.isPending ? "Sending" : "Send"}
+            <span className="hidden sm:inline">{sendMessage.isPending ? "Sending" : "Send"}</span>
             <SendIcon data-icon="inline-end" />
           </Button>
         </form>

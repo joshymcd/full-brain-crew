@@ -26,7 +26,7 @@ function Home() {
   });
 
   return (
-    <div className="flex min-h-[calc(100svh-var(--header-height))] items-center justify-center p-8">
+    <div className="flex h-full min-h-0 items-center justify-center overflow-auto p-6 sm:p-8">
       <div className="mx-auto flex max-w-md flex-col items-center gap-5 text-center">
         <div className="space-y-2">
           <h1 className="text-3xl font-semibold tracking-tight">Start a conversation</h1>

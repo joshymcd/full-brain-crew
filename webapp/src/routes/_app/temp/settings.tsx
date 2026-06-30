@@ -202,7 +202,7 @@ function TempSettings() {
   }
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="flex h-full min-h-0 flex-col gap-6 overflow-auto p-4 sm:p-8">
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold">OpenCode Server</h1>
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
