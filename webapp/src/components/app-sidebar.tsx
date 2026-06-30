@@ -24,6 +24,7 @@ type ConversationItem = {
   id: string;
   title: string;
   url: string;
+  chatId?: string;
   depth?: number;
   label?: string;
 };
@@ -70,6 +71,7 @@ function appendSessionWithChildren({
     id: session.id,
     title: sessionTitle(session),
     url: `/chats/${session.id}`,
+    chatId: session.id,
     depth: session.parentID ? 1 : undefined,
     label: session.parentID ? `Sub-session · #${session.slug}` : undefined,
   });

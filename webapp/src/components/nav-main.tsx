@@ -1,5 +1,6 @@
 "use client";
 
+import { Link } from "@tanstack/react-router";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   SidebarGroup,
@@ -34,6 +35,7 @@ export function NavMain({
       id?: string;
       title: string;
       url: string;
+      chatId?: string;
       depth?: number;
       label?: string;
     }[];
@@ -88,16 +90,29 @@ export function NavMain({
                             asChild
                             className={subItem.depth ? "h-auto min-h-7 py-1 pl-6" : undefined}
                           >
-                            <a href={subItem.url}>
-                              <span className="flex min-w-0 flex-col gap-0.5">
-                                <span>{subItem.title}</span>
-                                {subItem.label ? (
-                                  <span className="text-[0.65rem] tracking-wide text-muted-foreground uppercase">
-                                    {subItem.label}
-                                  </span>
-                                ) : null}
-                              </span>
-                            </a>
+                            {subItem.chatId ? (
+                              <Link to="/chats/$chatId" params={{ chatId: subItem.chatId }}>
+                                <span className="flex min-w-0 flex-col gap-0.5">
+                                  <span>{subItem.title}</span>
+                                  {subItem.label ? (
+                                    <span className="text-[0.65rem] tracking-wide text-muted-foreground uppercase">
+                                      {subItem.label}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </Link>
+                            ) : (
+                              <a href={subItem.url}>
+                                <span className="flex min-w-0 flex-col gap-0.5">
+                                  <span>{subItem.title}</span>
+                                  {subItem.label ? (
+                                    <span className="text-[0.65rem] tracking-wide text-muted-foreground uppercase">
+                                      {subItem.label}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </a>
+                            )}
                           </SidebarMenuSubButton>
                         </SidebarMenuSubItem>
                       ))}

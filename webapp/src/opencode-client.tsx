@@ -34,7 +34,8 @@ export type OpencodeRouterContext = {
 export const opencodeAuthAtom = atomWithStorage<OpencodeAuth | undefined>(
   OPENCODE_AUTH_STORAGE_KEY,
   undefined,
-  createJSONStorage(() => window.sessionStorage),
+  createJSONStorage(() => window.localStorage),
+  { getOnInit: true },
 );
 
 function createClient(auth?: OpencodeAuth) {
